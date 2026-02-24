@@ -1,14 +1,815 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id              String   @id @default(cuid())
+  clerkId         String   @unique
+  email           String   @unique
+  name            String
+  phone           String?
+  avatarUrl       String?
+  venmoHandle     String?
+  hoodBucksBalance Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organizedTrips  Trip[]            @relation("TripOrganizer")
+  tripMemberships TripMember[]
+  expenses        Expense[]         @relation("ExpensePayer")
+  wineScores      WineScore[]
+  wineBets        WineBet[]
+  transactions    HoodBucksTransaction[]
+  payments        Payment[]
+
+  @@map("users")
+}
+
+// ============================================================================
+// TRIPS
+// ============================================================================
+
+enum TripType {
+  CABIN
+  CRUISE
+  ROAD_TRIP
+  DAY_TRIP
+  INTERNATIONAL
+  OTHER
+}
+
+enum TripStatus {
+  PLANNING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Trip {
+  id                     String     @id @default(cuid())
+  title                  String
+  type                   TripType   @default(OTHER)
+  description            String?
+  startDate              DateTime
+  endDate                DateTime
+  timezone               String     @default("America/Los_Angeles")
+
+  // Location
+  address                String?
+  city                   String?
+  state                  String?
+  country                String?
+  latitude               Float?
+  longitude              Float?
+
+  // Media & Links
+  coverImageUrl          String?
+  airbnbConfirmationCode String?
+  airbnbUrl              String?
+
+  // Status
+  status                 TripStatus @default(PLANNING)
+
+  // Organizer
+  organizerId            String
+  organizer              User       @relation("TripOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+
+  // Invite System
+  inviteToken            String     @unique @default(cuid())
+  inviteTokenExpiry      DateTime?
+
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  // Relations
+  members                TripMember[]
+  itineraryDays          ItineraryDay[]
+  mealNights             MealNight[]
+  wineEvents             WineEvent[]
+  expenses               Expense[]
+  announcements          Announcement[]
+  documents              TripDocument[]
+  chatMessages           ChatMessage[]
+  photos                 TripPhoto[]
+  packingItems           PackingItem[]
+  shoppingItems          ShoppingItem[]
+  activities             Activity[]
+  transactions           HoodBucksTransaction[]
+  payments               Payment[]
+
+  @@index([organizerId])
+  @@index([inviteToken])
+  @@index([status])
+  @@map("trips")
+}
+
+// ============================================================================
+// TRIP MEMBERS (Guests)
+// ============================================================================
+
+enum MemberRole {
+  ORGANIZER
+  CO_ORGANIZER
+  GUEST
+}
+
+enum RsvpStatus {
+  PENDING
+  CONFIRMED
+  MAYBE
+  DECLINED
+}
+
+model TripMember {
+  id                  String      @id @default(cuid())
+  tripId              String
+  trip                Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  // User reference (optional - guests may not have accounts)
+  userId              String?
+  user                User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Guest info (for non-registered guests)
+  guestName           String?
+  guestEmail          String?
+  guestPhone          String?
+
+  // Role & Status
+  role                MemberRole  @default(GUEST)
+  rsvpStatus          RsvpStatus  @default(PENDING)
+
+  // Couple info
+  isCouple            Boolean     @default(false)
+  couplePartnerName   String?
+
+  // Preferences
+  dietaryRestrictions String?
+  allergies           String?
+  notes               String?
+
+  // Guest access token
+  inviteToken         String      @unique @default(cuid())
+
+  // Timestamps
+  joinedAt            DateTime?
+  createdAt           DateTime    @default(now())
+
+  // Notification preferences (JSON)
+  notifPrefs          Json        @default("{\"tripUpdates\":true,\"mealChanges\":true,\"activityVotes\":true,\"wineContest\":true,\"expenseUpdates\":true,\"announcements\":true,\"chat\":true,\"notifyViaEmail\":true,\"notifyViaSms\":false}")
+
+  // Hood Bucks (per-trip balance)
+  hoodBucksBalance    Int         @default(1000)
+
+  // Relations
+  assignedActivities  Activity[]        @relation("ActivityAssignee")
+  createdActivities   Activity[]        @relation("ActivityCreator")
+  activityVotes       ActivityVote[]
+  assignedMeals       MealNight[]       @relation("MealAssignee")
+  createdRecipes      Recipe[]
+  assignedShopping    ShoppingItem[]    @relation("ShoppingAssignee")
+  purchasedShopping   ShoppingItem[]    @relation("ShoppingPurchaser")
+  claimedPacking      PackingItem[]
+  wineEntries         WineEntry[]
+  wineScores          WineScore[]
+  wineBets            WineBet[]
+  expenseSplits       ExpenseSplit[]
+  announcements       Announcement[]
+  uploadedDocuments   TripDocument[]
+  chatMessages        ChatMessage[]
+  uploadedPhotos      TripPhoto[]
+  transactions        HoodBucksTransaction[]
+
+  @@unique([tripId, guestEmail])
+  @@index([tripId])
+  @@index([userId])
+  @@index([inviteToken])
+  @@map("trip_members")
+}
+
+// ============================================================================
+// ITINERARY & ACTIVITIES
+// ============================================================================
+
+model ItineraryDay {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  date      DateTime
+  title     String?
+  notes     String?
+
+  // Relations
+  activities Activity[]
+
+  @@unique([tripId, date])
+  @@index([tripId])
+  @@map("itinerary_days")
+}
+
+enum ActivityCategory {
+  DINING
+  ADVENTURE
+  RELAXATION
+  SHOPPING
+  TRAVEL
+  OTHER
+}
+
+enum ActivityStatus {
+  IDEA
+  VOTING
+  CONFIRMED
+  COMPLETED
+}
+
+model Activity {
+  id                String           @id @default(cuid())
+  tripId            String
+  trip              Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  itineraryDayId    String?
+  itineraryDay      ItineraryDay?    @relation(fields: [itineraryDayId], references: [id], onDelete: SetNull)
+
+  title             String
+  description       String?
+  startTime         DateTime?
+  endTime           DateTime?
+
+  // Location
+  location          String?
+  address           String?
+  latitude          Float?
+  longitude         Float?
+
+  // Details
+  category          ActivityCategory @default(OTHER)
+  reservationUrl    String?
+  confirmationCode  String?
+  cost              Float?
+  paidBy            String?
+
+  // Assignment & Status
+  assignedToMemberId String?
+  assignedTo        TripMember?      @relation("ActivityAssignee", fields: [assignedToMemberId], references: [id], onDelete: SetNull)
+  status            ActivityStatus   @default(IDEA)
+  voteCount         Int              @default(0)
+
+  // Creator
+  createdByMemberId String?
+  createdBy         TripMember?      @relation("ActivityCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+
+  // Relations
+  votes             ActivityVote[]
+
+  @@index([tripId])
+  @@index([itineraryDayId])
+  @@map("activities")
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+model ActivityVote {
+  id         String     @id @default(cuid())
+  activityId String
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     TripMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  vote       VoteType
+  createdAt  DateTime   @default(now())
+
+  @@unique([activityId, memberId])
+  @@index([activityId])
+  @@map("activity_votes")
+}
+
+// ============================================================================
+// MEAL PLANNING
+// ============================================================================
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACKS
+}
+
+enum MealStatus {
+  UNASSIGNED
+  ASSIGNED
+  PLANNED
+  COMPLETED
+}
+
+model MealNight {
+  id                  String      @id @default(cuid())
+  tripId              String
+  trip                Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  date                DateTime
+  mealType            MealType    @default(DINNER)
+  title               String?
+  description         String?
+
+  // Assignment
+  assignedToMemberId  String?
+  assignedTo          TripMember? @relation("MealAssignee", fields: [assignedToMemberId], references: [id], onDelete: SetNull)
+  assignedCoupleName  String?
+
+  status              MealStatus  @default(UNASSIGNED)
+  servings            Int?
+  notes               String?
+  createdAt           DateTime    @default(now())
+
+  // Relations
+  recipes             Recipe[]
+  shoppingItems       ShoppingItem[]
+
+  @@unique([tripId, date, mealType])
+  @@index([tripId])
+  @@map("meal_nights")
+}
+
+enum RecipeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Recipe {
+  id                String           @id @default(cuid())
+  mealNightId       String
+  mealNight         MealNight        @relation(fields: [mealNightId], references: [id], onDelete: Cascade)
+
+  title             String
+  description       String?
+  servings          Int              @default(4)
+  prepTimeMinutes   Int?
+  cookTimeMinutes   Int?
+  difficulty        RecipeDifficulty @default(MEDIUM)
+  imageUrl          String?
+  sourceUrl         String?
+
+  // JSON arrays for flexibility
+  ingredients       Json             @default("[]") // [{name, amount, unit, notes}]
+  instructions      Json             @default("[]") // [{step, text, timerMinutes}]
+
+  createdByMemberId String?
+  createdBy         TripMember?      @relation(fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+
+  @@index([mealNightId])
+  @@map("recipes")
+}
+
+enum ShoppingCategory {
+  PRODUCE
+  MEAT
+  DAIRY
+  BAKERY
+  FROZEN
+  PANTRY
+  BEVERAGES
+  SNACKS
+  HOUSEHOLD
+  OTHER
+}
+
+model ShoppingItem {
+  id                  String           @id @default(cuid())
+  tripId              String
+  trip                Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  mealNightId         String?
+  mealNight           MealNight?       @relation(fields: [mealNightId], references: [id], onDelete: SetNull)
+
+  name                String
+  quantity            Float            @default(1)
+  unit                String?
+  category            ShoppingCategory @default(OTHER)
+  estimatedCost       Float?
+
+  // Assignment & Status
+  assignedToMemberId  String?
+  assignedTo          TripMember?      @relation("ShoppingAssignee", fields: [assignedToMemberId], references: [id], onDelete: SetNull)
+  isPurchased         Boolean          @default(false)
+  purchasedByMemberId String?
+  purchasedBy         TripMember?      @relation("ShoppingPurchaser", fields: [purchasedByMemberId], references: [id], onDelete: SetNull)
+
+  notes               String?
+  createdAt           DateTime         @default(now())
+
+  @@index([tripId])
+  @@index([mealNightId])
+  @@map("shopping_items")
+}
+
+// ============================================================================
+// PACKING LIST
+// ============================================================================
+
+enum PackingCategory {
+  CLOTHING
+  TOILETRIES
+  FOOD_AND_DRINKS
+  GEAR
+  ENTERTAINMENT
+  FIRST_AID
+  DOCUMENTS
+  ELECTRONICS
+  OTHER
+}
+
+model PackingItem {
+  id                String          @id @default(cuid())
+  tripId            String
+  trip              Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  category          PackingCategory @default(OTHER)
+  name              String
+  quantity          Int             @default(1)
+  forEveryone       Boolean         @default(false) // Personal vs shared
+
+  // Claiming
+  claimedByMemberId String?
+  claimedBy         TripMember?     @relation(fields: [claimedByMemberId], references: [id], onDelete: SetNull)
+  isPacked          Boolean         @default(false)
+
+  notes             String?
+  createdAt         DateTime        @default(now())
+
+  @@index([tripId])
+  @@map("packing_items")
+}
+
+// ============================================================================
+// WINE TASTING EVENTS
+// ============================================================================
+
+enum WineEventStatus {
+  SETUP
+  OPEN
+  SCORING
+  REVEAL
+  COMPLETE
+}
+
+model WineEvent {
+  id              String          @id @default(cuid())
+  tripId          String
+  trip            Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  title           String
+  date            DateTime
+  status          WineEventStatus @default(SETUP)
+
+  // Rules
+  priceRangeMin   Float           @default(4)
+  priceRangeMax   Float           @default(40)
+  bottleCount     Int             @default(0)
+
+  // Betting
+  hoodBucksPotSize Int            @default(500)
+  allowCashBets   Boolean         @default(true)
+
+  revealedAt      DateTime?
+  createdAt       DateTime        @default(now())
+
+  // Relations
+  entries         WineEntry[]
+  scores          WineScore[]
+  bets            WineBet[]
+
+  @@index([tripId])
+  @@index([status])
+  @@map("wine_events")
+}
+
+model WineEntry {
+  id                  String      @id @default(cuid())
+  wineEventId         String
+  wineEvent           WineEvent   @relation(fields: [wineEventId], references: [id], onDelete: Cascade)
+
+  bagNumber           Int
+  wineName            String
+  winery              String?
+  vintage             Int?
+  varietal            String?
+  price               Float
+
+  submittedByMemberId String?
+  submittedBy         TripMember? @relation(fields: [submittedByMemberId], references: [id], onDelete: SetNull)
+  imageUrl            String?
+
+  isRevealed          Boolean     @default(false)
+  finalPlace          Int?        // 1, 2, 3, or null
+  notes               String?
+  createdAt           DateTime    @default(now())
+
+  @@unique([wineEventId, bagNumber])
+  @@index([wineEventId])
+  @@map("wine_entries")
+}
+
+model WineScore {
+  id          String      @id @default(cuid())
+  wineEventId String
+  wineEvent   WineEvent   @relation(fields: [wineEventId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      TripMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Rankings: {first: entryId, second: entryId, third: entryId}
+  rankings    Json        @default("{}")
+
+  // Taste notes: {[entryId]: {rating: 1-5, notes: string}}
+  tasteNotes  Json        @default("{}")
+
+  submittedAt DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@unique([wineEventId, memberId])
+  @@index([wineEventId])
+  @@map("wine_scores")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID_VENMO
+  PAID_STRIPE
+  WAIVED
+}
+
+model WineBet {
+  id                   String        @id @default(cuid())
+  wineEventId          String
+  wineEvent            WineEvent     @relation(fields: [wineEventId], references: [id], onDelete: Cascade)
+  memberId             String
+  member               TripMember    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  userId               String?
+  user                 User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Predictions
+  predictedFirst       String?       // WineEntry ID
+  predictedSecond      String?       // WineEntry ID
+  predictedThird       String?       // WineEntry ID
+
+  // Amounts
+  betAmountHoodBucks   Int           @default(0)
+  betAmountCash        Float         @default(0)
+
+  paymentStatus        PaymentStatus @default(PENDING)
+
+  // Results (filled after reveal)
+  isCorrect            Boolean?
+  hoodBucksWon         Int           @default(0)
+  cashWon              Float         @default(0)
+
+  createdAt            DateTime      @default(now())
+
+  @@unique([wineEventId, memberId])
+  @@index([wineEventId])
+  @@map("wine_bets")
+}
+
+// ============================================================================
+// EXPENSES
+// ============================================================================
+
+enum ExpenseCategory {
+  GROCERIES
+  GAS
+  DINING
+  ACTIVITIES
+  ACCOMMODATION
+  OTHER
+}
+
+enum SplitType {
+  EQUAL
+  CUSTOM
+  ORGANIZER_ONLY
+}
+
+model Expense {
+  id                String          @id @default(cuid())
+  tripId            String
+  trip              Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  title             String
+  category          ExpenseCategory @default(OTHER)
+  amount            Float
+  currency          String          @default("USD")
+
+  paidByMemberId    String?
+  paidByUserId      String?
+  paidByUser        User?           @relation("ExpensePayer", fields: [paidByUserId], references: [id], onDelete: SetNull)
+
+  date              DateTime        @default(now())
+  splitType         SplitType       @default(EQUAL)
+
+  receiptImageUrl   String?
+  notes             String?
+  createdAt         DateTime        @default(now())
+
+  // Relations
+  splits            ExpenseSplit[]
+
+  @@index([tripId])
+  @@map("expenses")
+}
+
+model ExpenseSplit {
+  id         String      @id @default(cuid())
+  expenseId  String
+  expense    Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     TripMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  amount     Float
+  isPaid     Boolean     @default(false)
+  paidAt     DateTime?
+
+  @@unique([expenseId, memberId])
+  @@index([expenseId])
+  @@map("expense_splits")
+}
+
+// ============================================================================
+// ANNOUNCEMENTS
+// ============================================================================
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Announcement {
+  id                String               @id @default(cuid())
+  tripId            String
+  trip              Trip                 @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  title             String
+  body              String
+  priority          AnnouncementPriority @default(NORMAL)
+
+  createdByMemberId String?
+  createdBy         TripMember?          @relation(fields: [createdByMemberId], references: [id], onDelete: SetNull)
+
+  sentViaEmail      Boolean              @default(false)
+  sentViaSms        Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+
+  @@index([tripId])
+  @@map("announcements")
+}
+
+// ============================================================================
+// DOCUMENTS
+// ============================================================================
+
+enum DocumentCategory {
+  RESERVATION
+  BOARDING_PASS
+  ITINERARY
+  INSURANCE
+  OTHER
+}
+
+model TripDocument {
+  id                  String           @id @default(cuid())
+  tripId              String
+  trip                Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  title               String
+  category            DocumentCategory @default(OTHER)
+  fileUrl             String
+  fileType            String?
+
+  uploadedByMemberId  String?
+  uploadedBy          TripMember?      @relation(fields: [uploadedByMemberId], references: [id], onDelete: SetNull)
+  createdAt           DateTime         @default(now())
+
+  @@index([tripId])
+  @@map("trip_documents")
+}
+
+// ============================================================================
+// CHAT
+// ============================================================================
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  tripId    String
+  trip      Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    TripMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  message   String
+  imageUrl  String?
+  createdAt DateTime    @default(now())
+
+  @@index([tripId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+// ============================================================================
+// PHOTOS
+// ============================================================================
+
+model TripPhoto {
+  id                  String      @id @default(cuid())
+  tripId              String
+  trip                Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  uploadedByMemberId  String?
+  uploadedBy          TripMember? @relation(fields: [uploadedByMemberId], references: [id], onDelete: SetNull)
+
+  imageUrl            String
+  caption             String?
+  takenAt             DateTime?
+  createdAt           DateTime    @default(now())
+
+  @@index([tripId])
+  @@map("trip_photos")
+}
+
+// ============================================================================
+// HOOD BUCKS
+// ============================================================================
+
+enum HoodBucksTransactionType {
+  INITIAL_GRANT
+  BET_PLACED
+  BET_WON
+  BET_LOST
+  BONUS
+  ADMIN_GRANT
+  TRIP_AWARD
+}
+
+model HoodBucksTransaction {
+  id           String                    @id @default(cuid())
+  memberId     String
+  member       TripMember                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tripId       String?
+  trip         Trip?                     @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  amount       Int                       // Positive = credit, Negative = debit
+  type         HoodBucksTransactionType
+  description  String?
+  relatedBetId String?
+  createdAt    DateTime                  @default(now())
+
+  @@index([memberId])
+  @@index([tripId])
+  @@map("hood_bucks_transactions")
+}
+
+// ============================================================================
+// PAYMENTS (STRIPE)
+// ============================================================================
+
+enum StripePaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                    String              @id @default(cuid())
+  userId                String?
+  user                  User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tripId                String?
+  trip                  Trip?               @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  amount                Float
+  currency              String              @default("USD")
+  stripePaymentIntentId String?
+  status                StripePaymentStatus @default(PENDING)
+  purpose               String?
+  createdAt             DateTime            @default(now())
+
+  @@index([userId])
+  @@index([tripId])
+  @@map("payments")
 }
