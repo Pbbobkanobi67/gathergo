@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { wineScoreCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; eventId: string }>;
@@ -65,6 +66,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           include: { user: { select: { id: true, name: true, avatarUrl: true } } },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "WINE_SCORE_SUBMITTED",
+      action: `submitted wine scores`,
+      entityType: "wineScore",
+      entityId: score.id,
     });
 
     return NextResponse.json({ success: true, data: score }, { status: 201 });

@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Calendar,
   MapPin,
@@ -20,6 +21,7 @@ import {
   Trophy,
   Settings,
   Camera,
+  Navigation,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AvatarStack } from "@/components/ui/avatar";
 import { LoadingPage } from "@/components/shared/LoadingSpinner";
+import { ActivityFeed } from "@/components/shared/ActivityFeed";
+import { AiAssistant } from "@/components/shared/AiAssistant";
 import { useTrip } from "@/hooks/useTrip";
 import { formatDate, getDaysUntil, generateVenmoDeepLink } from "@/lib/utils";
 import { TRIP_TYPES } from "@/constants";
@@ -227,11 +231,14 @@ export default function TripDetailPage() {
                 Pay your share of the accommodation cost directly to the organizer via Venmo.
               </p>
               <div className="flex flex-col items-center gap-4 rounded-xl bg-slate-800 p-6">
-                <div className="h-32 w-32 rounded-xl bg-white p-2">
-                  {/* QR Code placeholder - will be replaced with actual QR component */}
-                  <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
-                    QR Code
-                  </div>
+                <div className="h-40 w-40 rounded-xl bg-white p-2">
+                  <Image
+                    src={process.env.NEXT_PUBLIC_ORGANIZER_VENMO_QR_URL || "/Venmo QR.jpg"}
+                    alt="Venmo QR Code"
+                    width={160}
+                    height={160}
+                    className="h-full w-full rounded-lg object-contain"
+                  />
                 </div>
                 <div className="text-center">
                   <p className="font-semibold text-slate-100">@{venmoHandle}</p>
@@ -253,6 +260,47 @@ export default function TripDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Google Maps */}
+          {(trip.latitude && trip.longitude) || trip.city ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Navigation className="h-5 w-5 text-teal-400" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {trip.latitude && trip.longitude && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                  <div className="overflow-hidden rounded-lg">
+                    <iframe
+                      width="100%"
+                      height="200"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                      src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${trip.latitude},${trip.longitude}&zoom=14`}
+                    />
+                  </div>
+                ) : null}
+                <a
+                  href={
+                    trip.latitude && trip.longitude
+                      ? `https://www.google.com/maps/search/?api=1&query=${trip.latitude},${trip.longitude}`
+                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${trip.address ? trip.address + ", " : ""}${trip.city}, ${trip.state}`)}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" className="w-full gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Open in Google Maps
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          ) : null}
+
           {/* Guests */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -298,19 +346,13 @@ export default function TripDetailPage() {
             </Card>
           )}
 
-          {/* Activity Feed Placeholder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-sm text-slate-400">
-                Activity feed coming soon
-              </p>
-            </CardContent>
-          </Card>
+          {/* Activity Feed */}
+          <ActivityFeed tripId={tripId} />
         </div>
       </div>
+
+      {/* AI Trip Assistant */}
+      <AiAssistant tripId={tripId} />
     </div>
   );
 }

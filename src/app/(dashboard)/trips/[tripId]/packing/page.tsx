@@ -10,7 +10,6 @@ import {
   Check,
   Trash2,
   Users,
-  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,9 +95,6 @@ export default function PackingPage() {
   const handleDelete = async (itemId: string) => {
     await deleteItem.mutateAsync({ tripId, itemId });
   };
-
-  const getCategoryInfo = (cat: string) =>
-    PACKING_CATEGORIES.find((c) => c.value === cat) || PACKING_CATEGORIES[8];
 
   const categoryOptions = PACKING_CATEGORIES.map((c) => ({
     value: c.value,

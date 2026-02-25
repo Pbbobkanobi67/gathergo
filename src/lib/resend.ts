@@ -5,7 +5,6 @@ function getResend() {
 }
 
 const fromEmail = process.env.RESEND_FROM_EMAIL || "GatherGo <noreply@gathergо.app>";
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export type EmailType =
   | "trip-invite"

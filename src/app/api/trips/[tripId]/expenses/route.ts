@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { expenseCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -175,6 +176,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       });
 
+      logActivity({
+        tripId,
+        userId: user.id,
+        type: "EXPENSE_ADDED",
+        action: `added an expense: ${expense.title} ($${expense.amount.toFixed(2)})`,
+        entityType: "expense",
+        entityId: expense.id,
+        metadata: { amount: expense.amount, title: expense.title, category: expense.category },
+      });
+
       return NextResponse.json({ success: true, data: expense }, { status: 201 });
     } else if (splitType === "CUSTOM") {
       // Use the splits array provided in the request body
@@ -229,6 +240,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       });
 
+      logActivity({
+        tripId,
+        userId: user.id,
+        type: "EXPENSE_ADDED",
+        action: `added an expense: ${expense.title} ($${expense.amount.toFixed(2)})`,
+        entityType: "expense",
+        entityId: expense.id,
+        metadata: { amount: expense.amount, title: expense.title, category: expense.category },
+      });
+
       return NextResponse.json({ success: true, data: expense }, { status: 201 });
     } else {
       // ORGANIZER_ONLY - no splits created
@@ -266,6 +287,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             },
           },
         },
+      });
+
+      logActivity({
+        tripId,
+        userId: user.id,
+        type: "EXPENSE_ADDED",
+        action: `added an expense: ${expense.title} ($${expense.amount.toFixed(2)})`,
+        entityType: "expense",
+        entityId: expense.id,
+        metadata: { amount: expense.amount, title: expense.title, category: expense.category },
       });
 
       return NextResponse.json({ success: true, data: expense }, { status: 201 });

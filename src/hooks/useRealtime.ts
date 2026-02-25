@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase, subscribeToChannel, unsubscribeFromChannel } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 type RealtimeEventType = "INSERT" | "UPDATE" | "DELETE";
 

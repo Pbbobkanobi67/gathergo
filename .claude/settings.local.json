@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/Apps/gathergo -name \"tailwind.config.*\" -o -name \"tsconfig.json\" | xargs ls -la 2>/dev/null)",
+      "/allowed-tools Bash Read Edit Write Glob Grep",
+      "Bash(head:*)",
+      "Bash(cd /d/Apps/gathergo && npx eslint src/ 2>&1)",
+      "Bash(tail:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)",
+      "Bash(cd /d/Apps/gathergo && npx vercel --prod 2>&1)",
+      "Bash(cd /d/Apps/gathergo && npx prisma db execute --stdin <<'EOF'\nSELECT id, title, \"startDate\", \"endDate\" FROM \"Trip\" LIMIT 10;\nEOF)",
+      "Bash(cd \"D:/Apps/gathergo\" && npx prisma db push 2>&1)",
+      "Bash(cd \"D:/Apps/gathergo\" && npx prisma generate 2>&1)",
+      "Bash(cd /d/Apps/gathergo && npx prisma migrate dev --name add-site-settings 2>&1)",
+      "Bash(cd /d/Apps/gathergo && npx prisma db push 2>&1)"
+    ]
+  }
+}

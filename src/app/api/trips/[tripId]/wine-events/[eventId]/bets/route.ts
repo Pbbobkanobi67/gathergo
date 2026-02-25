@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { wineBetCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; eventId: string }>;
@@ -99,6 +100,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           ]
         : []),
     ]);
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "WINE_BET_PLACED",
+      action: `placed a wine bet`,
+      entityType: "wineBet",
+      entityId: bet.id,
+    });
 
     return NextResponse.json({ success: true, data: bet }, { status: 201 });
   } catch (error) {

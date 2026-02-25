@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, getUserTripMember } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { activityCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -126,6 +127,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "ACTIVITY_ADDED",
+      action: `added an activity: ${activity.title}`,
+      entityType: "activity",
+      entityId: activity.id,
     });
 
     return NextResponse.json({ success: true, data: activity }, { status: 201 });

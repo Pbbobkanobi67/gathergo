@@ -327,3 +327,21 @@ export const adminTripUpdateSchema = z.object({
 });
 
 export type AdminTripUpdateInput = z.infer<typeof adminTripUpdateSchema>;
+
+// Activity log admin edit
+export const activityLogUpdateSchema = z.object({
+  action: z.string().min(1, "Action text is required").max(500),
+});
+
+export type ActivityLogUpdateInput = z.infer<typeof activityLogUpdateSchema>;
+
+// AI Chat validation
+export const aiChatSchema = z.object({
+  message: z.string().min(1, "Message is required").max(2000),
+  history: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string(),
+  })).optional(),
+});
+
+export type AiChatInput = z.infer<typeof aiChatSchema>;

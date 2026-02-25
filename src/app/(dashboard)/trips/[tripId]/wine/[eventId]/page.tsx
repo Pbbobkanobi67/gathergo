@@ -10,7 +10,6 @@ import {
   Trophy,
   Star,
   DollarSign,
-  Eye,
   EyeOff,
   Hash,
 } from "lucide-react";

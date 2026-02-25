@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { photoCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -88,6 +89,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         uploadedByMemberId: member?.id,
       },
       include: photoInclude,
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "PHOTO_UPLOADED",
+      action: `uploaded a photo${photo.caption ? `: ${photo.caption}` : ""}`,
+      entityType: "photo",
+      entityId: photo.id,
     });
 
     return NextResponse.json({ success: true, data: photo }, { status: 201 });

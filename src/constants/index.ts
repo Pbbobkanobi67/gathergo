@@ -230,6 +230,32 @@ export const UPLOAD_LIMITS = {
   MAX_IMAGES_PER_UPLOAD: 10,
 } as const;
 
+// Activity Log Types
+export const ACTIVITY_LOG_TYPES = [
+  { value: "EXPENSE_ADDED", label: "Expense Added", icon: "DollarSign", color: "text-green-400" },
+  { value: "EXPENSE_UPDATED", label: "Expense Updated", icon: "DollarSign", color: "text-amber-400" },
+  { value: "EXPENSE_DELETED", label: "Expense Deleted", icon: "DollarSign", color: "text-red-400" },
+  { value: "MEAL_CREATED", label: "Meal Created", icon: "Utensils", color: "text-orange-400" },
+  { value: "MEAL_ASSIGNED", label: "Meal Assigned", icon: "Utensils", color: "text-orange-400" },
+  { value: "MEAL_UPDATED", label: "Meal Updated", icon: "Utensils", color: "text-amber-400" },
+  { value: "MEMBER_JOINED", label: "Member Joined", icon: "UserPlus", color: "text-teal-400" },
+  { value: "MEMBER_LEFT", label: "Member Left", icon: "UserMinus", color: "text-red-400" },
+  { value: "WINE_EVENT_CREATED", label: "Wine Event Created", icon: "Wine", color: "text-purple-400" },
+  { value: "WINE_ENTRY_SUBMITTED", label: "Wine Entry Submitted", icon: "Wine", color: "text-purple-400" },
+  { value: "WINE_SCORE_SUBMITTED", label: "Wine Score Submitted", icon: "Wine", color: "text-purple-400" },
+  { value: "WINE_BET_PLACED", label: "Wine Bet Placed", icon: "Trophy", color: "text-amber-400" },
+  { value: "ACTIVITY_ADDED", label: "Activity Added", icon: "Calendar", color: "text-blue-400" },
+  { value: "ACTIVITY_VOTED", label: "Activity Voted", icon: "ThumbsUp", color: "text-blue-400" },
+  { value: "PACKING_ITEM_ADDED", label: "Packing Item Added", icon: "Package", color: "text-slate-400" },
+  { value: "PHOTO_UPLOADED", label: "Photo Uploaded", icon: "Camera", color: "text-pink-400" },
+  { value: "DOCUMENT_UPLOADED", label: "Document Uploaded", icon: "FileText", color: "text-slate-400" },
+  { value: "TRIP_UPDATED", label: "Trip Updated", icon: "Settings", color: "text-teal-400" },
+  { value: "TRIP_CREATED", label: "Trip Created", icon: "MapPin", color: "text-teal-400" },
+  { value: "ANNOUNCEMENT_POSTED", label: "Announcement", icon: "Bell", color: "text-amber-400" },
+  { value: "HOOD_BUCKS_GRANTED", label: "Hood Bucks Granted", icon: "Trophy", color: "text-amber-400" },
+  { value: "RECIPE_ADDED", label: "Recipe Added", icon: "ChefHat", color: "text-orange-400" },
+] as const;
+
 // Pagination defaults
 export const PAGINATION = {
   DEFAULT_PAGE_SIZE: 20,

@@ -9,7 +9,6 @@ import {
   DollarSign,
   Receipt,
   TrendingUp,
-  TrendingDown,
   Users,
   Calendar,
   Check,
@@ -31,7 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useExpenses, useCreateExpense, type ExpenseWithDetails } from "@/hooks/useExpenses";
+import { useExpenses, useCreateExpense } from "@/hooks/useExpenses";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { EXPENSE_CATEGORIES, SPLIT_TYPES } from "@/constants";
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { mealNightCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -150,6 +151,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "MEAL_CREATED",
+      action: `created a meal: ${meal.title || meal.mealType}`,
+      entityType: "meal",
+      entityId: meal.id,
     });
 
     return NextResponse.json({ success: true, data: meal }, { status: 201 });

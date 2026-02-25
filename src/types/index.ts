@@ -22,6 +22,7 @@ export type {
   TripPhoto,
   HoodBucksTransaction,
   Payment,
+  ActivityLog,
 } from "@/generated/prisma";
 
 export {
@@ -45,6 +46,7 @@ export {
   DocumentCategory,
   HoodBucksTransactionType,
   StripePaymentStatus,
+  ActivityLogType,
 } from "@/generated/prisma";
 
 // Hood Bucks Balance
@@ -366,6 +368,61 @@ export interface RealtimeEvent<T = unknown> {
   old_record?: T;
 }
 
+// Admin types
+export interface AdminStats {
+  totalUsers: number;
+  totalTrips: number;
+  activeTrips: number;
+  totalExpenses: number;
+  recentSignups: number;
+  totalExpenseVolume: number;
+  tripsByStatus: { status: string; count: number }[];
+}
+
+export interface AdminUserListItem {
+  id: string;
+  clerkId: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+  createdAt: Date;
+  _count: {
+    organizedTrips: number;
+    tripMemberships: number;
+  };
+}
+
+export interface AdminTripListItem {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  startDate: Date;
+  endDate: Date;
+  city: string | null;
+  state: string | null;
+  createdAt: Date;
+  organizer: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  _count: {
+    members: number;
+    expenses: number;
+  };
+}
+
+export interface CurrentUser {
+  id: string;
+  clerkId: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+}
+
 // Session/auth types
 export interface GuestSession {
   memberId: string;
@@ -380,4 +437,32 @@ export interface UserSession {
   clerkId: string;
   email: string;
   name: string;
+}
+
+// Activity Log types
+export interface ActivityLogItem {
+  id: string;
+  tripId: string;
+  userId: string | null;
+  type: string;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+// AI Chat types
+export interface AiChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AiChatResponse {
+  message: string;
 }

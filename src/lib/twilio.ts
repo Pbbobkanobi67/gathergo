@@ -6,8 +6,6 @@ const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
 const client = accountSid && authToken ? Twilio(accountSid, authToken) : null;
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
 export type SmsType =
   | "trip-invite"
   | "trip-reminder"

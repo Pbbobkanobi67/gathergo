@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { documentCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -97,6 +98,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         uploadedByMemberId: member?.id,
       },
       include: documentInclude,
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "DOCUMENT_UPLOADED",
+      action: `uploaded a document: ${document.title}`,
+      entityType: "document",
+      entityId: document.id,
     });
 
     return NextResponse.json({ success: true, data: document }, { status: 201 });

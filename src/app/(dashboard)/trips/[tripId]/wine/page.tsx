@@ -9,9 +9,7 @@ import {
   Wine,
   Trophy,
   DollarSign,
-  Users,
   Eye,
-  EyeOff,
   Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

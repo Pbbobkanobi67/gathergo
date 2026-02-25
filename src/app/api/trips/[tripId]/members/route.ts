@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -110,6 +111,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "MEMBER_JOINED",
+      action: `added ${member.guestName || "a guest"} to the trip`,
+      entityType: "member",
+      entityId: member.id,
     });
 
     return NextResponse.json({ success: true, data: member }, { status: 201 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; activityId: string }>;
@@ -68,6 +69,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         data: { voteCount: { increment: 1 } },
       }),
     ]);
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "ACTIVITY_VOTED",
+      action: `voted on an activity`,
+      entityType: "activity",
+      entityId: activityId,
+    });
 
     return NextResponse.json({ success: true, data: { voted: true, voteType } }, { status: 201 });
   } catch (error) {

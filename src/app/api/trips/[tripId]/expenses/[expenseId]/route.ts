@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; expenseId: string }>;
@@ -161,6 +162,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         });
       });
 
+      logActivity({
+        tripId,
+        userId: user.id,
+        type: "EXPENSE_UPDATED",
+        action: `updated expense: ${expense.title}`,
+        entityType: "expense",
+        entityId: expense.id,
+      });
+
       return NextResponse.json({ success: true, data: expense });
     }
 
@@ -169,6 +179,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       where: { id: expenseId },
       data,
       include: expenseInclude,
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "EXPENSE_UPDATED",
+      action: `updated expense: ${expense.title}`,
+      entityType: "expense",
+      entityId: expense.id,
     });
 
     return NextResponse.json({ success: true, data: expense });
@@ -217,6 +236,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Delete expense (splits cascade via onDelete: Cascade in schema)
     await prisma.expense.delete({
       where: { id: expenseId },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "EXPENSE_DELETED",
+      action: `deleted an expense`,
+      entityType: "expense",
+      entityId: expenseId,
     });
 
     return NextResponse.json({ success: true, data: { id: expenseId } });

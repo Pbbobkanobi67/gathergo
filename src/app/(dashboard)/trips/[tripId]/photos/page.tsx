@@ -12,7 +12,6 @@ import {
   Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -95,11 +94,6 @@ export default function PhotosPage() {
       {photos && photos.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((photo) => {
-            const uploaderName =
-              photo.uploadedBy?.user?.name ||
-              photo.uploadedBy?.guestName ||
-              null;
-
             return (
               <button
                 key={photo.id}

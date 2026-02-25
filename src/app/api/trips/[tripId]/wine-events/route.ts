@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { wineEventCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -95,6 +96,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "WINE_EVENT_CREATED",
+      action: `created wine event: ${wineEvent.title}`,
+      entityType: "wineEvent",
+      entityId: wineEvent.id,
     });
 
     return NextResponse.json({ success: true, data: wineEvent }, { status: 201 });

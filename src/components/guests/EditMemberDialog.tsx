@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Settings2, Shield, Utensils, Heart, AlertTriangle } from "lucide-react";
 import {
   Dialog,
@@ -48,20 +48,21 @@ export function EditMemberDialog({
   const [role, setRole] = useState("GUEST");
   const [rsvpStatus, setRsvpStatus] = useState("PENDING");
 
-  useEffect(() => {
-    if (member) {
-      setGuestName(member.user?.name || member.guestName || "");
-      setGuestPhone(member.guestPhone || "");
-      setDietaryRestrictions(member.dietaryRestrictions || "");
-      setAllergies(member.allergies || "");
-      setIsCouple(member.isCouple);
-      setCouplePartnerName(member.couplePartnerName || "");
-      setNotes(member.notes || "");
-      setRole(member.role);
-      setRsvpStatus(member.rsvpStatus);
-      setShowRemoveConfirm(false);
-    }
-  }, [member]);
+  const memberKey = member?.id;
+  const prevMemberKey = useState<string | undefined>(undefined);
+  if (memberKey && memberKey !== prevMemberKey[0]) {
+    prevMemberKey[1](memberKey);
+    setGuestName(member!.user?.name || member!.guestName || "");
+    setGuestPhone(member!.guestPhone || "");
+    setDietaryRestrictions(member!.dietaryRestrictions || "");
+    setAllergies(member!.allergies || "");
+    setIsCouple(member!.isCouple);
+    setCouplePartnerName(member!.couplePartnerName || "");
+    setNotes(member!.notes || "");
+    setRole(member!.role);
+    setRsvpStatus(member!.rsvpStatus);
+    setShowRemoveConfirm(false);
+  }
 
   if (!member) return null;
 
@@ -117,11 +118,6 @@ export function EditMemberDialog({
       // Error available on removeMember.error
     }
   };
-
-  const rsvpOptions = RSVP_STATUSES.map((s) => ({
-    value: s.value,
-    label: `${s.icon} ${s.label}`,
-  }));
 
   const roleOptions = MEMBER_ROLES.map((r) => ({
     value: r.value,

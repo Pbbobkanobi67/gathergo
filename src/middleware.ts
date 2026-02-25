@@ -6,17 +6,11 @@ const isProtectedRoute = createRouteMatcher([
   "/trips(.*)",
   "/profile(.*)",
   "/hood-bucks(.*)",
+  "/admin(.*)",
 ]);
 
-// Routes that are public (guest access)
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/join/(.*)",
-  "/trip/(.*)",
-  "/api/guest/(.*)",
-]);
+// Public routes reference (used by Clerk middleware automatically)
+// "/", "/sign-in(.*)", "/sign-up(.*)", "/join/(.*)", "/trip/(.*)", "/api/guest/(.*)"
 
 export default clerkMiddleware(async (auth, req) => {
   // If it's a protected route and user is not authenticated, redirect to sign-in

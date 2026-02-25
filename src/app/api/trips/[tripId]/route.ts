@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { tripUpdateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -154,6 +155,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "TRIP_UPDATED",
+      action: `updated the trip`,
+      entityType: "trip",
+      entityId: tripId,
     });
 
     return NextResponse.json({ success: true, data: trip });

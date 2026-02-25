@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { memberUpdateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; memberId: string }>;
@@ -134,6 +135,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await prisma.tripMember.delete({
       where: { id: memberId },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "MEMBER_LEFT",
+      action: `removed ${member.guestName || "a member"} from the trip`,
+      entityType: "member",
+      entityId: memberId,
     });
 
     return NextResponse.json({ success: true, data: { id: memberId } });

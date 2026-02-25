@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; mealId: string }>;
@@ -100,6 +101,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: body.assignedToMemberId ? "MEAL_ASSIGNED" : "MEAL_UPDATED",
+      action: body.assignedToMemberId ? `assigned a meal` : `updated a meal`,
+      entityType: "meal",
+      entityId: mealId,
     });
 
     return NextResponse.json({ success: true, data: meal });

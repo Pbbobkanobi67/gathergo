@@ -160,7 +160,7 @@ export async function handleWebhookEvent(
 ): Promise<WebhookHandlerResult> {
   switch (event.type) {
     case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
+      // const session = event.data.object as Stripe.Checkout.Session;
       return {
         success: true,
         action: "payment_completed",
@@ -168,7 +168,7 @@ export async function handleWebhookEvent(
     }
 
     case "payment_intent.succeeded": {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      // const paymentIntent = event.data.object as Stripe.PaymentIntent;
       return {
         success: true,
         action: "payment_intent_succeeded",

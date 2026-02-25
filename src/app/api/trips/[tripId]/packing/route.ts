@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { packingItemCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -84,6 +85,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const item = await prisma.packingItem.create({
       data: { tripId, name, category, quantity, forEveryone, notes },
       include: packingInclude,
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "PACKING_ITEM_ADDED",
+      action: `added a packing item: ${item.name}`,
+      entityType: "packingItem",
+      entityId: item.id,
     });
 
     return NextResponse.json({ success: true, data: item }, { status: 201 });
