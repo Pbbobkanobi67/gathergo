@@ -37,9 +37,10 @@ const tripBaseSchema = z.object({
   coverImageUrl: urlSchema,
   airbnbConfirmationCode: z.string().max(50).optional(),
   airbnbUrl: urlSchema,
+  status: z.enum(["PLANNING", "CONFIRMED", "ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
 });
 
-export const tripCreateSchema = tripBaseSchema.refine((data) => data.endDate >= data.startDate, {
+export const tripCreateSchema = tripBaseSchema.omit({ status: true }).refine((data) => data.endDate >= data.startDate, {
   message: "End date must be after start date",
   path: ["endDate"],
 });
@@ -310,3 +311,19 @@ export const memberUpdateSchema = z.object({
 });
 
 export type MemberUpdateInput = z.infer<typeof memberUpdateSchema>;
+
+// Admin validation schemas
+export const adminUserUpdateSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  email: z.string().email().optional(),
+  isAdmin: z.boolean().optional(),
+});
+
+export type AdminUserUpdateInput = z.infer<typeof adminUserUpdateSchema>;
+
+export const adminTripUpdateSchema = z.object({
+  title: z.string().min(1).max(100).optional(),
+  status: z.enum(["PLANNING", "CONFIRMED", "ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
+});
+
+export type AdminTripUpdateInput = z.infer<typeof adminTripUpdateSchema>;

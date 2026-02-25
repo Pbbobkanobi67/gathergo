@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-teal-600 text-white hover:bg-teal-700 shadow-sm",
-        destructive: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
-        outline: "border border-slate-600 bg-transparent text-slate-100 hover:bg-slate-800 hover:text-white",
-        secondary: "bg-slate-700 text-slate-100 hover:bg-slate-600 shadow-sm",
+        default: "bg-gradient-to-b from-teal-500 to-teal-700 text-white shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_0_20px_rgba(13,148,136,0.4),0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] hover:from-teal-400 hover:to-teal-600",
+        destructive: "bg-gradient-to-b from-red-500 to-red-700 text-white shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4),0_1px_2px_rgba(0,0,0,0.3)] hover:from-red-400 hover:to-red-600",
+        outline: "border border-slate-600 bg-transparent text-slate-100 hover:bg-slate-800 hover:text-white hover:border-slate-500",
+        secondary: "bg-gradient-to-b from-slate-600 to-slate-700 text-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] hover:from-slate-500 hover:to-slate-600",
         ghost: "text-slate-300 hover:bg-slate-800 hover:text-white",
         link: "text-teal-400 underline-offset-4 hover:underline",
-        amber: "bg-amber-500 text-slate-900 hover:bg-amber-600 shadow-sm",
-        coral: "bg-orange-500 text-white hover:bg-orange-600 shadow-sm",
+        amber: "bg-gradient-to-b from-amber-400 to-amber-600 text-slate-900 shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4),0_1px_2px_rgba(0,0,0,0.3)] hover:from-amber-300 hover:to-amber-500",
+        coral: "bg-gradient-to-b from-orange-400 to-orange-600 text-white shadow-[0_1px_2px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_0_20px_rgba(249,115,22,0.4),0_1px_2px_rgba(0,0,0,0.3)] hover:from-orange-300 hover:to-orange-500",
       },
       size: {
         default: "h-10 px-4 py-2",

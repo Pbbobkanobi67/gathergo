@@ -53,9 +53,9 @@ export default function DashboardPage() {
 
       {/* Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border-t-2 border-t-teal-500">
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="rounded-full bg-teal-500/20 p-3">
+            <div className="rounded-full bg-teal-500/20 p-3 ring-1 ring-teal-500/20">
               <Calendar className="h-6 w-6 text-teal-400" />
             </div>
             <div>
@@ -67,9 +67,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-t-2 border-t-amber-500">
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="rounded-full bg-amber-500/20 p-3">
+            <div className="rounded-full bg-amber-500/20 p-3 ring-1 ring-amber-500/20">
               <MapPin className="h-6 w-6 text-amber-400" />
             </div>
             <div>
@@ -81,9 +81,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-t-2 border-t-purple-500">
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="rounded-full bg-purple-500/20 p-3">
+            <div className="rounded-full bg-purple-500/20 p-3 ring-1 ring-purple-500/20">
               <Users className="h-6 w-6 text-purple-400" />
             </div>
             <div>
@@ -95,9 +95,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-t-2 border-t-green-500">
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="rounded-full bg-green-500/20 p-3">
+            <div className="rounded-full bg-green-500/20 p-3 ring-1 ring-green-500/20">
               <TrendingUp className="h-6 w-6 text-green-400" />
             </div>
             <div>

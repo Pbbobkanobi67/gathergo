@@ -19,7 +19,7 @@ export function TopNav({ onMenuClick, hoodBucksBalance, showSearch = true }: Top
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-700 bg-slate-900/95 px-4 backdrop-blur-sm lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-700/50 bg-slate-900/95 px-4 backdrop-blur-xl shadow-[0_1px_0_rgba(255,255,255,0.03)] lg:px-6">
       {/* Mobile menu button */}
       <Button
         variant="ghost"
@@ -63,7 +63,7 @@ export function TopNav({ onMenuClick, hoodBucksBalance, showSearch = true }: Top
       {hoodBucksBalance !== undefined && (
         <Link
           href="/hood-bucks"
-          className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-amber-400 transition-colors hover:bg-amber-500/20"
+          className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-amber-400 border border-amber-500/20 transition-all duration-200 hover:bg-amber-500/20 hover:shadow-[0_0_12px_rgba(245,158,11,0.2)]"
         >
           <Beer className="h-4 w-4" />
           <span className="text-sm font-medium">
@@ -75,7 +75,7 @@ export function TopNav({ onMenuClick, hoodBucksBalance, showSearch = true }: Top
       {/* Notifications */}
       <Button variant="ghost" size="icon" className="relative">
         <Bell className="h-5 w-5" />
-        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-coral-500" />
+        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.6)] animate-pulse" />
       </Button>
 
       {/* User menu */}

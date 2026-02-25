@@ -15,8 +15,8 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       <div className="w-full">
         <select
           className={cn(
-            "flex h-10 w-full rounded-lg border bg-slate-800 px-3 py-2 text-sm text-slate-100 transition-colors appearance-none",
-            "border-slate-600 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20",
+            "flex h-10 w-full rounded-lg border bg-slate-800 px-3 py-2 text-sm text-slate-100 transition-all duration-200 appearance-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]",
+            "border-slate-600 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),0_0_12px_rgba(13,148,136,0.15)]",
             "disabled:cursor-not-allowed disabled:opacity-50",
             error && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
             className

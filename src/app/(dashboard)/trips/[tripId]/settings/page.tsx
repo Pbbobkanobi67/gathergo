@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Settings,
   Bell,
-  BellOff,
   Globe,
   Trash2,
   Save,
@@ -44,17 +42,35 @@ export default function SettingsPage() {
     timezone: "America/Los_Angeles",
     type: "VACATION",
     status: "PLANNING",
+    startDate: "",
+    endDate: "",
   });
 
-  useEffect(() => {
-    if (trip) {
-      setTripSettings({
-        timezone: trip.timezone || "America/Los_Angeles",
-        type: trip.type || "VACATION",
-        status: trip.status || "PLANNING",
-      });
-    }
-  }, [trip]);
+  const toDateInputValue = (date: Date | string) => {
+    const d = typeof date === "string" ? new Date(date) : date;
+    return d.toISOString().split("T")[0];
+  };
+
+  const tripTimezone = trip?.timezone;
+  const tripType = trip?.type;
+  const tripStatus = trip?.status;
+  const tripStartDate = trip?.startDate ? toDateInputValue(trip.startDate) : "";
+  const tripEndDate = trip?.endDate ? toDateInputValue(trip.endDate) : "";
+  if (tripTimezone && tripSettings.timezone !== tripTimezone) {
+    setTripSettings((prev) => ({ ...prev, timezone: tripTimezone }));
+  }
+  if (tripType && tripSettings.type !== tripType) {
+    setTripSettings((prev) => ({ ...prev, type: tripType }));
+  }
+  if (tripStatus && tripSettings.status !== tripStatus) {
+    setTripSettings((prev) => ({ ...prev, status: tripStatus }));
+  }
+  if (tripStartDate && tripSettings.startDate !== tripStartDate) {
+    setTripSettings((prev) => ({ ...prev, startDate: tripStartDate }));
+  }
+  if (tripEndDate && tripSettings.endDate !== tripEndDate) {
+    setTripSettings((prev) => ({ ...prev, endDate: tripEndDate }));
+  }
 
   if (isLoading) {
     return <LoadingPage message="Loading settings..." />;
@@ -68,7 +84,10 @@ export default function SettingsPage() {
       data: {
         timezone: tripSettings.timezone,
         type: tripSettings.type,
-      } as Record<string, unknown> as Partial<typeof tripSettings>,
+        status: tripSettings.status,
+        startDate: new Date(tripSettings.startDate + "T12:00:00"),
+        endDate: new Date(tripSettings.endDate + "T12:00:00"),
+      } as never,
     });
   };
 
@@ -156,6 +175,31 @@ export default function SettingsPage() {
                 value={tripSettings.type}
                 onChange={(e) =>
                   setTripSettings({ ...tripSettings, type: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="start-date">Start Date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={tripSettings.startDate}
+                onChange={(e) =>
+                  setTripSettings({ ...tripSettings, startDate: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end-date">End Date</Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={tripSettings.endDate}
+                onChange={(e) =>
+                  setTripSettings({ ...tripSettings, endDate: e.target.value })
                 }
               />
             </div>

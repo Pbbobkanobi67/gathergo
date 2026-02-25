@@ -58,10 +58,13 @@ export default async function HomePage() {
       {/* Hero */}
       <section className="relative overflow-hidden pt-32 pb-20">
         <div className="absolute inset-0 bg-gradient-to-b from-teal-600/10 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(13,148,136,0.15),transparent)]" />
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.03)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_30%,black,transparent)]" />
         <div className="relative mx-auto max-w-6xl px-4 text-center">
           <h1 className="text-4xl font-bold tracking-tight text-slate-100 sm:text-5xl md:text-6xl">
             Group Travel
-            <span className="block text-teal-400">Made Simple</span>
+            <span className="block bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">Made Simple</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
             Plan your cabin trips, road trips, and adventures with friends. Coordinate meals,
@@ -69,7 +72,7 @@ export default async function HomePage() {
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/sign-up">
-              <Button size="xl" className="gap-2">
+              <Button size="xl" className="gap-2 shadow-[0_0_24px_rgba(13,148,136,0.4)]">
                 Start Planning Free
                 <ChevronRight className="h-5 w-5" />
               </Button>
@@ -97,10 +100,10 @@ export default async function HomePage() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-xl border border-slate-700 bg-slate-800/50 p-6 transition-colors hover:border-teal-500/50"
+                className="group rounded-xl border border-slate-700 bg-gradient-to-b from-slate-800/80 to-slate-800/50 p-6 shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-all duration-300 hover:border-teal-500/50 hover:-translate-y-1 hover:shadow-[0_4px_16px_rgba(0,0,0,0.4),0_0_20px_rgba(13,148,136,0.15)]"
               >
-                <div className="rounded-lg bg-teal-500/20 p-3 w-fit">
-                  <feature.icon className="h-6 w-6 text-teal-400" />
+                <div className="rounded-lg bg-teal-500/20 p-3 w-fit transition-colors duration-300 group-hover:bg-teal-500/30">
+                  <feature.icon className="h-6 w-6 text-teal-400 transition-colors duration-300 group-hover:text-teal-300" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-slate-100">
                   {feature.title}
@@ -150,7 +153,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <div className="flex-1">
-              <div className="rounded-2xl bg-slate-800 p-8 shadow-xl">
+              <div className="rounded-2xl bg-gradient-to-b from-slate-800 to-slate-800/80 p-8 shadow-[0_4px_16px_rgba(0,0,0,0.4),0_0_30px_rgba(168,85,247,0.15)] border border-slate-700">
                 <div className="flex justify-center gap-4">
                   {[1, 2, 3].map((n) => (
                     <div
@@ -175,8 +178,9 @@ export default async function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20">
-        <div className="mx-auto max-w-4xl px-4 text-center">
+      <section className="relative py-20">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_50%,rgba(13,148,136,0.08),transparent)]" />
+        <div className="relative mx-auto max-w-4xl px-4 text-center">
           <h2 className="text-3xl font-bold text-slate-100">
             Ready to Plan Your Next Adventure?
           </h2>
@@ -184,7 +188,7 @@ export default async function HomePage() {
             Create your first trip for free. No credit card required.
           </p>
           <Link href="/sign-up">
-            <Button size="xl" className="mt-8 gap-2">
+            <Button size="xl" className="mt-8 gap-2 shadow-[0_0_24px_rgba(13,148,136,0.4)]">
               Get Started Free
               <ChevronRight className="h-5 w-5" />
             </Button>
