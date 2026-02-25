@@ -129,6 +129,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const data = validationResult.data;
 
+    // Normalize dates to noon UTC to prevent timezone display shifts
+    if (data.startDate) { data.startDate.setUTCHours(12, 0, 0, 0); }
+    if (data.endDate) { data.endDate.setUTCHours(12, 0, 0, 0); }
+
     const trip = await prisma.trip.update({
       where: { id: tripId },
       data,

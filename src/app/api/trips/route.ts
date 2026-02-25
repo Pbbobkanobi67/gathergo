@@ -89,6 +89,10 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data;
 
+    // Normalize dates to noon UTC to prevent timezone display shifts
+    if (data.startDate) { data.startDate.setUTCHours(12, 0, 0, 0); }
+    if (data.endDate) { data.endDate.setUTCHours(12, 0, 0, 0); }
+
     // Create the trip with a unique invite token
     const trip = await prisma.trip.create({
       data: {
