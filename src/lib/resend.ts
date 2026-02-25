@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+}
 
 const fromEmail = process.env.RESEND_FROM_EMAIL || "GatherGo <noreply@gathergо.app>";
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -24,7 +26,7 @@ interface SendEmailParams {
 
 export async function sendEmail({ to, subject, html, replyTo }: SendEmailParams) {
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: fromEmail,
       to: Array.isArray(to) ? to : [to],
       subject,
