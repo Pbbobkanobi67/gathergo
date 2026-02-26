@@ -1,123 +1,186 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
   Plus,
   Utensils,
-  ChefHat,
-  Clock,
-  Users,
-  Check,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
-import { UserAvatar } from "@/components/ui/avatar";
 import { LoadingPage } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { useMeals, useCreateMeal, useUpdateMeal } from "@/hooks/useMeals";
+import { MealFormModal } from "@/components/meals/MealFormModal";
+import { RecipeFormModal } from "@/components/meals/RecipeFormModal";
+import { MealDaySection } from "@/components/meals/MealDaySection";
+import { GroceryList } from "@/components/meals/GroceryList";
+import { AddGroceryItemDialog } from "@/components/meals/AddGroceryItemDialog";
+import { useMeals, useDeleteMeal, type MealNightWithDetails, type RecipeWithCreator } from "@/hooks/useMeals";
 import { useMembers } from "@/hooks/useMembers";
-import { formatDate } from "@/lib/utils";
-import { MEAL_TYPES, MEAL_STATUSES } from "@/constants";
+import { useTrip } from "@/hooks/useTrip";
+import { useShoppingItems } from "@/hooks/useShoppingItems";
+import { useSafeUser } from "@/components/shared/SafeClerkUser";
+import { MEAL_STATUSES, MEAL_TYPES } from "@/constants";
+
+// Meal type sort order for within a day
+const MEAL_TYPE_ORDER: Record<string, number> = {
+  BREAKFAST: 0,
+  LUNCH: 1,
+  DINNER: 2,
+  SNACKS: 3,
+};
+
+function generateDateRange(start: string | Date, end: string | Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(start);
+  const endDate = new Date(end);
+  // Normalize to UTC date only
+  current.setUTCHours(12, 0, 0, 0);
+  endDate.setUTCHours(12, 0, 0, 0);
+  while (current <= endDate) {
+    dates.push(current.toISOString().split("T")[0]);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return dates;
+}
 
 export default function MealsPage() {
   const params = useParams();
   const tripId = params.tripId as string;
-  const { data: meals, isLoading } = useMeals(tripId);
+  const { data: meals, isLoading: mealsLoading } = useMeals(tripId);
   const { data: members } = useMembers(tripId);
-  const createMeal = useCreateMeal();
-  const updateMeal = useUpdateMeal();
+  const { data: trip } = useTrip(tripId);
+  const { data: shoppingItems } = useShoppingItems(tripId);
+  const deleteMeal = useDeleteMeal();
+  const { user: clerkUser } = useSafeUser();
 
-  const [addMealOpen, setAddMealOpen] = useState(false);
-  const [newMeal, setNewMeal] = useState({
-    date: "",
-    mealType: "DINNER" as "BREAKFAST" | "LUNCH" | "DINNER" | "SNACKS",
-    title: "",
-    description: "",
-    servings: "",
-  });
+  const [activeTab, setActiveTab] = useState<"meals" | "grocery">("meals");
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [initialized, setInitialized] = useState(false);
 
-  if (isLoading) {
+  // Modal states
+  const [mealModalOpen, setMealModalOpen] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<MealNightWithDetails | null>(null);
+  const [defaultMealDate, setDefaultMealDate] = useState<string>("");
+  const [recipeModalOpen, setRecipeModalOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<RecipeWithCreator | null>(null);
+  const [recipeMealId, setRecipeMealId] = useState<string>("");
+  const [groceryDialogOpen, setGroceryDialogOpen] = useState(false);
+
+  // Find current user's member ID
+  const currentMemberId = useMemo(() => {
+    if (!clerkUser || !members) return null;
+    const found = members.find((m) => m.userId === clerkUser.id);
+    return found?.id || null;
+  }, [clerkUser, members]);
+
+  // Member options for dropdowns
+  const memberOptions = useMemo(
+    () => (members || []).map((m) => ({
+      id: m.id,
+      label: m.user?.name || m.guestName || "Guest",
+    })),
+    [members]
+  );
+
+  // Meal options for grocery dialog
+  const mealOptions = useMemo(
+    () => (meals || []).map((m) => {
+      const typeInfo = MEAL_TYPES.find((t) => t.value === m.mealType);
+      return {
+        id: m.id,
+        label: `${typeInfo?.icon || ""} ${m.title || typeInfo?.label || m.mealType}`,
+      };
+    }),
+    [meals]
+  );
+
+  // Generate all trip dates
+  const tripDates = useMemo(() => {
+    if (!trip?.startDate || !trip?.endDate) return [];
+    return generateDateRange(trip.startDate, trip.endDate);
+  }, [trip?.startDate, trip?.endDate]);
+
+  // Initialize expanded days once we have dates
+  if (tripDates.length > 0 && !initialized) {
+    setExpandedDays(new Set(tripDates));
+    setInitialized(true);
+  }
+
+  // Group meals by date
+  const mealsByDate = useMemo(() => {
+    const map: Record<string, MealNightWithDetails[]> = {};
+    (meals || []).forEach((meal) => {
+      const dateKey = new Date(meal.date).toISOString().split("T")[0];
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(meal);
+    });
+    // Sort each date's meals by type order
+    Object.values(map).forEach((arr) => {
+      arr.sort((a, b) => (MEAL_TYPE_ORDER[a.mealType] ?? 9) - (MEAL_TYPE_ORDER[b.mealType] ?? 9));
+    });
+    return map;
+  }, [meals]);
+
+  if (mealsLoading) {
     return <LoadingPage message="Loading meals..." />;
   }
 
-  const handleAddMeal = async () => {
-    if (!newMeal.date) return;
-    try {
-      await createMeal.mutateAsync({
-        tripId,
-        date: newMeal.date,
-        mealType: newMeal.mealType,
-        title: newMeal.title || undefined,
-        description: newMeal.description || undefined,
-        servings: newMeal.servings ? parseInt(newMeal.servings) : undefined,
-      });
-      setNewMeal({ date: "", mealType: "DINNER", title: "", description: "", servings: "" });
-      setAddMealOpen(false);
-    } catch {
-      // Error on createMeal.error
-    }
-  };
-
-  const handleAssign = async (mealId: string, memberId: string) => {
-    await updateMeal.mutateAsync({
-      tripId,
-      mealId,
-      data: {
-        assignedToMemberId: memberId,
-        status: "ASSIGNED",
-      },
-    });
-  };
-
-  const handleStatusChange = async (mealId: string, status: string) => {
-    await updateMeal.mutateAsync({
-      tripId,
-      mealId,
-      data: { status },
-    });
-  };
-
-  const getMealTypeInfo = (type: string) =>
-    MEAL_TYPES.find((t) => t.value === type) || MEAL_TYPES[2];
-
-  const getStatusInfo = (status: string) =>
-    MEAL_STATUSES.find((s) => s.value === status) || MEAL_STATUSES[0];
-
-  const mealTypeOptions = MEAL_TYPES.map((t) => ({
-    value: t.value,
-    label: `${t.icon} ${t.label}`,
+  // Stats
+  const totalMeals = meals?.length || 0;
+  const statCounts = MEAL_STATUSES.map((s) => ({
+    ...s,
+    count: meals?.filter((m) => m.status === s.value).length || 0,
   }));
 
-  const memberOptions = (members || []).map((m) => ({
-    value: m.id,
-    label: m.user?.name || m.guestName || "Guest",
-  }));
+  // Use tripDates if available, otherwise fall back to dates from meals
+  const displayDates = tripDates.length > 0 ? tripDates : Object.keys(mealsByDate).sort();
 
-  // Group meals by date
-  type MealList = NonNullable<typeof meals>;
-  const mealsByDate = (meals || []).reduce((acc: Record<string, MealList>, meal) => {
-    const dateKey = new Date(meal.date).toISOString().split("T")[0];
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(meal);
-    return acc;
-  }, {} as Record<string, MealList>);
+  // Toggle functions
+  const toggleDay = (date: string) => {
+    const next = new Set(expandedDays);
+    if (next.has(date)) next.delete(date);
+    else next.add(date);
+    setExpandedDays(next);
+  };
 
-  const sortedDates = Object.keys(mealsByDate).sort();
+  const expandAll = () => setExpandedDays(new Set(displayDates));
+  const collapseAll = () => setExpandedDays(new Set());
+
+  // Meal actions
+  const handleAddMealForDay = (date: string) => {
+    setEditingMeal(null);
+    setDefaultMealDate(date);
+    setMealModalOpen(true);
+  };
+
+  const handleEditMeal = (meal: MealNightWithDetails) => {
+    setEditingMeal(meal);
+    setDefaultMealDate("");
+    setMealModalOpen(true);
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    await deleteMeal.mutateAsync({ tripId, mealId });
+  };
+
+  // Recipe actions
+  const handleAddRecipe = (mealId: string) => {
+    setRecipeMealId(mealId);
+    setEditingRecipe(null);
+    setRecipeModalOpen(true);
+  };
+
+  const handleEditRecipe = (mealId: string, recipe: RecipeWithCreator) => {
+    setRecipeMealId(mealId);
+    setEditingRecipe(recipe);
+    setRecipeModalOpen(true);
+  };
+
+  const groceryItemCount = shoppingItems?.length || 0;
 
   return (
     <div className="space-y-6">
@@ -130,251 +193,162 @@ export default function MealsPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Meal Planning</h1>
+            <h1 className="text-2xl font-bold text-slate-100">Meals & Grocery</h1>
             <p className="text-sm text-slate-400">
-              {meals?.length || 0} meals across {sortedDates.length} days
+              {totalMeals} meal{totalMeals !== 1 ? "s" : ""} across {displayDates.length} day{displayDates.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
-        <Button onClick={() => setAddMealOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Meal
-        </Button>
-      </div>
-
-      {/* Meal Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {MEAL_STATUSES.map((status) => {
-          const count = meals?.filter((m) => m.status === status.value).length || 0;
-          return (
-            <div
-              key={status.value}
-              className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center"
-            >
-              <p className="text-2xl font-bold text-slate-100">{count}</p>
-              <p className="text-xs text-slate-400">{status.label}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Meals by Date */}
-      {sortedDates.length > 0 ? (
-        <div className="space-y-6">
-          {sortedDates.map((dateKey) => {
-            const dateMeals = mealsByDate[dateKey] || [];
-            return (
-              <div key={dateKey}>
-                <h2 className="mb-3 text-lg font-semibold text-slate-200">
-                  {formatDate(dateKey)}
-                </h2>
-                <div className="space-y-3">
-                  {dateMeals.map((meal) => {
-                    const typeInfo = getMealTypeInfo(meal.mealType);
-                    const statusInfo = getStatusInfo(meal.status);
-                    const assignedName = meal.assignedTo?.user?.name || meal.assignedTo?.guestName || null;
-
-                    return (
-                      <Card key={meal.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            <span className="text-2xl">{typeInfo.icon}</span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-slate-100">
-                                  {meal.title || typeInfo.label}
-                                </h3>
-                                <Badge
-                                  variant={
-                                    meal.status === "COMPLETED"
-                                      ? "success"
-                                      : meal.status === "PLANNED"
-                                      ? "default"
-                                      : meal.status === "ASSIGNED"
-                                      ? "warning"
-                                      : "secondary"
-                                  }
-                                >
-                                  {statusInfo.label}
-                                </Badge>
-                              </div>
-
-                              {meal.description && (
-                                <p className="mt-1 text-sm text-slate-400">{meal.description}</p>
-                              )}
-
-                              <div className="mt-3 flex flex-wrap items-center gap-3">
-                                {/* Assignment */}
-                                {assignedName ? (
-                                  <div className="flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1">
-                                    <UserAvatar
-                                      name={assignedName}
-                                      src={meal.assignedTo?.user?.avatarUrl}
-                                      size="sm"
-                                    />
-                                    <span className="text-sm text-slate-200">{assignedName}</span>
-                                  </div>
-                                ) : (
-                                  <Select
-                                    placeholder="Assign cook..."
-                                    options={memberOptions}
-                                    onChange={(e) => e.target.value && handleAssign(meal.id, e.target.value)}
-                                    className="h-8 w-48 text-xs"
-                                  />
-                                )}
-
-                                {meal.servings && (
-                                  <span className="flex items-center gap-1 text-xs text-slate-400">
-                                    <Users className="h-3 w-3" />
-                                    {meal.servings} servings
-                                  </span>
-                                )}
-
-                                {/* Recipes */}
-                                {meal.recipes && meal.recipes.length > 0 && (
-                                  <span className="flex items-center gap-1 text-xs text-slate-400">
-                                    <ChefHat className="h-3 w-3" />
-                                    {meal.recipes.length} recipe{meal.recipes.length !== 1 ? "s" : ""}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Recipe List */}
-                              {meal.recipes && meal.recipes.length > 0 && (
-                                <div className="mt-3 space-y-2">
-                                  {meal.recipes.map((recipe) => (
-                                    <div
-                                      key={recipe.id}
-                                      className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm"
-                                    >
-                                      <ChefHat className="h-4 w-4 text-amber-400" />
-                                      <span className="text-slate-200">{recipe.title}</span>
-                                      {recipe.prepTimeMinutes && (
-                                        <span className="flex items-center gap-1 text-xs text-slate-500">
-                                          <Clock className="h-3 w-3" />
-                                          {recipe.prepTimeMinutes + (recipe.cookTimeMinutes || 0)}m
-                                        </span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex shrink-0 gap-1">
-                              {meal.status !== "COMPLETED" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={() => handleStatusChange(meal.id, "COMPLETED")}
-                                  title="Mark complete"
-                                >
-                                  <Check className="h-4 w-4 text-green-400" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <EmptyState
-          icon={Utensils}
-          title="No meals planned"
-          description="Meals are auto-created with your trip. Add custom meals for breakfasts, lunches, or snacks."
-          actionLabel="Add a Meal"
-          onAction={() => setAddMealOpen(true)}
-        />
-      )}
-
-      {/* Add Meal Dialog */}
-      <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Utensils className="h-5 w-5 text-teal-400" />
-              Add Meal
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="meal-date" required>Date</Label>
-                <Input
-                  id="meal-date"
-                  type="date"
-                  value={newMeal.date}
-                  onChange={(e) => setNewMeal({ ...newMeal, date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="meal-type">Meal Type</Label>
-                <Select
-                  id="meal-type"
-                  options={mealTypeOptions}
-                  value={newMeal.mealType}
-                  onChange={(e) => setNewMeal({ ...newMeal, mealType: e.target.value as typeof newMeal.mealType })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="meal-title">Title (optional)</Label>
-              <Input
-                id="meal-title"
-                placeholder="e.g., Taco Night"
-                value={newMeal.title}
-                onChange={(e) => setNewMeal({ ...newMeal, title: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="meal-desc">Description</Label>
-              <Textarea
-                id="meal-desc"
-                placeholder="What's on the menu?"
-                rows={2}
-                value={newMeal.description}
-                onChange={(e) => setNewMeal({ ...newMeal, description: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="meal-servings">Servings</Label>
-              <Input
-                id="meal-servings"
-                type="number"
-                placeholder="e.g., 8"
-                value={newMeal.servings}
-                onChange={(e) => setNewMeal({ ...newMeal, servings: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddMealOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddMeal}
-              isLoading={createMeal.isPending}
-              disabled={!newMeal.date}
-              className="gap-2"
-            >
+        <div className="flex gap-2">
+          {activeTab === "meals" && (
+            <Button onClick={() => { setEditingMeal(null); setDefaultMealDate(""); setMealModalOpen(true); }} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Meal
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+          {activeTab === "grocery" && (
+            <Button onClick={() => setGroceryDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Item
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Tab Bar */}
+      <div className="flex gap-1 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
+        <button
+          onClick={() => setActiveTab("meals")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "meals"
+              ? "bg-teal-500/20 text-teal-400"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Utensils className="h-4 w-4" />
+          Meal Planning
+        </button>
+        <button
+          onClick={() => setActiveTab("grocery")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "grocery"
+              ? "bg-teal-500/20 text-teal-400"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Grocery List
+          {groceryItemCount > 0 && (
+            <Badge variant="secondary" className="text-[10px]">{groceryItemCount}</Badge>
+          )}
+        </button>
+      </div>
+
+      {/* MEAL PLANNING TAB */}
+      {activeTab === "meals" && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {statCounts.map((s) => (
+              <div
+                key={s.value}
+                className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center"
+              >
+                <p className="text-2xl font-bold text-slate-100">{s.count}</p>
+                <p className="text-xs text-slate-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Expand/Collapse */}
+          {displayDates.length > 0 && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={expandAll}>
+                Expand All
+              </Button>
+              <Button variant="outline" size="sm" onClick={collapseAll}>
+                Collapse All
+              </Button>
+            </div>
+          )}
+
+          {/* Day Sections */}
+          {displayDates.length > 0 ? (
+            <div className="space-y-4">
+              {displayDates.map((date, index) => (
+                <MealDaySection
+                  key={date}
+                  dayNumber={index + 1}
+                  date={date}
+                  meals={mealsByDate[date] || []}
+                  tripId={tripId}
+                  members={memberOptions}
+                  isExpanded={expandedDays.has(date)}
+                  onToggle={() => toggleDay(date)}
+                  onAddMeal={() => handleAddMealForDay(date)}
+                  onEditMeal={handleEditMeal}
+                  onDeleteMeal={handleDeleteMeal}
+                  onAddRecipe={handleAddRecipe}
+                  onEditRecipe={handleEditRecipe}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={Utensils}
+              title="No meals planned"
+              description="Add your first meal to get started with meal planning."
+              actionLabel="Add a Meal"
+              onAction={() => { setEditingMeal(null); setDefaultMealDate(""); setMealModalOpen(true); }}
+            />
+          )}
+        </>
+      )}
+
+      {/* GROCERY LIST TAB */}
+      {activeTab === "grocery" && (
+        <GroceryList
+          items={shoppingItems || []}
+          tripId={tripId}
+          members={memberOptions}
+          currentMemberId={currentMemberId}
+        />
+      )}
+
+      {/* Modals */}
+      <MealFormModal
+        open={mealModalOpen}
+        onOpenChange={(open) => {
+          setMealModalOpen(open);
+          if (!open) setEditingMeal(null);
+        }}
+        tripId={tripId}
+        meal={editingMeal}
+        members={memberOptions}
+        defaultDate={defaultMealDate}
+      />
+
+      <RecipeFormModal
+        open={recipeModalOpen}
+        onOpenChange={(open) => {
+          setRecipeModalOpen(open);
+          if (!open) {
+            setEditingRecipe(null);
+            setRecipeMealId("");
+          }
+        }}
+        tripId={tripId}
+        mealId={recipeMealId}
+        recipe={editingRecipe}
+      />
+
+      <AddGroceryItemDialog
+        open={groceryDialogOpen}
+        onOpenChange={setGroceryDialogOpen}
+        tripId={tripId}
+        meals={mealOptions}
+        members={memberOptions}
+      />
     </div>
   );
 }

@@ -60,6 +60,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             },
           },
         },
+        shoppingItems: {
+          include: {
+            assignedTo: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: [{ category: "asc" }, { name: "asc" }],
+        },
       },
       orderBy: [
         { date: "asc" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { MealNight, Recipe, TripMember } from "@/generated/prisma";
+import type { MealNight, Recipe, ShoppingItem, TripMember } from "@/generated/prisma";
 
 const API_BASE = "/api/trips";
 
@@ -18,9 +18,14 @@ interface RecipeWithCreator extends Recipe {
   createdBy: MemberWithUser | null;
 }
 
+interface ShoppingItemBasic extends ShoppingItem {
+  assignedTo: MemberWithUser | null;
+}
+
 interface MealNightWithDetails extends MealNight {
   recipes: RecipeWithCreator[];
   assignedTo: MemberWithUser | null;
+  shoppingItems?: ShoppingItemBasic[];
 }
 
 interface CreateMealInput {
@@ -138,4 +143,4 @@ export function useDeleteMeal() {
   });
 }
 
-export type { MealNightWithDetails, RecipeWithCreator, CreateMealInput, UpdateMealInput, DeleteMealInput };
+export type { MealNightWithDetails, RecipeWithCreator, ShoppingItemBasic, CreateMealInput, UpdateMealInput, DeleteMealInput };
