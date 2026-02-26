@@ -6,6 +6,13 @@ interface RouteParams {
   params: Promise<{ tripId: string }>;
 }
 
+const memberSelect = {
+  id: true,
+  guestName: true,
+  role: true,
+  user: { select: { id: true, name: true, avatarUrl: true } },
+} as const;
+
 // GET /api/trips/[tripId]/itinerary - List itinerary days with activities
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -24,37 +31,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       include: {
         activities: {
           include: {
-            createdBy: {
-              select: {
-                id: true,
-                guestName: true,
-                role: true,
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatarUrl: true,
-                  },
-                },
+            createdBy: { select: memberSelect },
+            assignedTo: { select: memberSelect },
+            rsvps: {
+              include: {
+                member: { select: memberSelect },
               },
             },
-            assignedTo: {
-              select: {
-                id: true,
-                guestName: true,
-                role: true,
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-            },
-            _count: {
-              select: { votes: true },
-            },
+            linkedMeal: { select: { id: true, title: true, mealType: true, date: true } },
+            linkedWineEvent: { select: { id: true, title: true, date: true } },
+            _count: { select: { votes: true } },
           },
           orderBy: { startTime: "asc" },
         },

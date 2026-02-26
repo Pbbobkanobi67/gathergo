@@ -2,10 +2,45 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer, getUserTripMember } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { activityCreateSchema } from "@/lib/validations";
+import { logActivity } from "@/lib/activity";
 
 interface RouteParams {
   params: Promise<{ tripId: string; activityId: string }>;
 }
+
+const activityInclude = {
+  createdBy: {
+    select: {
+      id: true,
+      guestName: true,
+      role: true,
+      user: { select: { id: true, name: true, avatarUrl: true } },
+    },
+  },
+  assignedTo: {
+    select: {
+      id: true,
+      guestName: true,
+      role: true,
+      user: { select: { id: true, name: true, avatarUrl: true } },
+    },
+  },
+  rsvps: {
+    include: {
+      member: {
+        select: {
+          id: true,
+          guestName: true,
+          role: true,
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
+      },
+    },
+  },
+  linkedMeal: { select: { id: true, title: true, mealType: true, date: true } },
+  linkedWineEvent: { select: { id: true, title: true, date: true } },
+  _count: { select: { votes: true } },
+} as const;
 
 // PATCH /api/trips/[tripId]/activities/[activityId] - Update an activity
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
@@ -20,7 +55,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify the user is a trip member
     const member = await getUserTripMember(user.id, tripId);
     if (!member) {
       return NextResponse.json(
@@ -29,7 +63,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify the activity exists and belongs to this trip
     const existingActivity = await prisma.activity.findFirst({
       where: { id: activityId, tripId },
     });
@@ -61,12 +94,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const data = validationResult.data;
 
-    // If changing itineraryDayId, verify it belongs to this trip
     if (data.itineraryDayId) {
       const day = await prisma.itineraryDay.findFirst({
         where: { id: data.itineraryDayId, tripId },
       });
-
       if (!day) {
         return NextResponse.json(
           { success: false, error: { code: "NOT_FOUND", message: "Itinerary day not found for this trip" } },
@@ -75,12 +106,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // If changing assignedToMemberId, verify it belongs to this trip
     if (data.assignedToMemberId) {
       const assignee = await prisma.tripMember.findFirst({
         where: { id: data.assignedToMemberId, tripId },
       });
-
       if (!assignee) {
         return NextResponse.json(
           { success: false, error: { code: "NOT_FOUND", message: "Assigned member not found for this trip" } },
@@ -92,36 +121,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const activity = await prisma.activity.update({
       where: { id: activityId },
       data,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            guestName: true,
-            role: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                avatarUrl: true,
-              },
-            },
-          },
-        },
-        assignedTo: {
-          select: {
-            id: true,
-            guestName: true,
-            role: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                avatarUrl: true,
-              },
-            },
-          },
-        },
-      },
+      include: activityInclude,
+    });
+
+    logActivity({
+      tripId,
+      userId: user.id,
+      type: "ACTIVITY_UPDATED",
+      action: `updated activity: ${activity.title}`,
+      entityType: "activity",
+      entityId: activity.id,
     });
 
     return NextResponse.json({ success: true, data: activity });
@@ -155,7 +164,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify the activity exists and belongs to this trip
     const activity = await prisma.activity.findFirst({
       where: { id: activityId, tripId },
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,47 +12,83 @@ import {
   ThumbsUp,
   ChevronDown,
   ChevronRight,
+  Pencil,
+  ExternalLink,
+  DollarSign,
+  Utensils,
+  Wine,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
 import { LoadingPage } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { useItinerary, useCreateActivity, useUpdateActivity, useDeleteActivity } from "@/hooks/useItinerary";
+import { ActivityFormModal } from "@/components/itinerary/ActivityFormModal";
+import { ActivityRsvpSection } from "@/components/itinerary/ActivityRsvpSection";
+import { useItinerary, useDeleteActivity, type Activity } from "@/hooks/useItinerary";
 import { useVoteActivity } from "@/hooks/useWineEventDetail";
-import { formatDate, formatTime } from "@/lib/utils";
+import { useMembers } from "@/hooks/useMembers";
+import { useMeals } from "@/hooks/useMeals";
+import { useWineEvents } from "@/hooks/useWineEvents";
+import { useSyncActivities } from "@/hooks/useActivitySync";
+import { useSafeUser } from "@/components/shared/SafeClerkUser";
+import { formatDate, formatTime, formatCurrency } from "@/lib/utils";
 import { ACTIVITY_CATEGORIES, ACTIVITY_STATUSES } from "@/constants";
 
 export default function ItineraryPage() {
   const params = useParams();
   const tripId = params.tripId as string;
   const { data: days, isLoading } = useItinerary(tripId);
-  const createActivity = useCreateActivity();
-  const updateActivity = useUpdateActivity();
+  const { data: membersData } = useMembers(tripId);
+  const { data: mealsData } = useMeals(tripId);
+  const { data: wineEventsData } = useWineEvents(tripId);
   const deleteActivity = useDeleteActivity();
   const voteActivity = useVoteActivity();
+  const syncActivities = useSyncActivities();
+  const { user: clerkUser } = useSafeUser();
 
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [addActivityDay, setAddActivityDay] = useState<string | null>(null);
-  const [newActivity, setNewActivity] = useState({
-    title: "",
-    description: "",
-    startTime: "",
-    endTime: "",
-    location: "",
-    category: "OTHER" as "DINING" | "ADVENTURE" | "RELAXATION" | "SHOPPING" | "TRAVEL" | "OTHER",
-  });
+  const [editActivity, setEditActivity] = useState<Activity | null>(null);
+
+  // Map members to MemberInfo shape for components
+  const members = useMemo(() =>
+    (membersData || []).map((m: { id: string; guestName: string | null; role: string; user: { id: string; name: string; avatarUrl: string | null } | null }) => ({
+      id: m.id,
+      guestName: m.guestName,
+      role: m.role,
+      user: m.user ? { id: m.user.id, name: m.user.name, avatarUrl: m.user.avatarUrl } : null,
+    })),
+    [membersData]
+  );
+
+  // Find current user's member ID
+  const currentMemberId = useMemo(() => {
+    if (!clerkUser || !membersData) return null;
+    const found = membersData.find((m: { userId: string | null }) => m.userId === clerkUser.id);
+    return found?.id || null;
+  }, [clerkUser, membersData]);
+
+  // Meals/wine for cross-system linking
+  const meals = useMemo(() =>
+    (mealsData || []).map((m: { id: string; title: string | null; mealType: string; date: string | Date }) => ({
+      id: m.id,
+      title: m.title,
+      mealType: m.mealType,
+      date: typeof m.date === "string" ? m.date : (m.date as Date).toISOString(),
+    })),
+    [mealsData]
+  );
+
+  const wineEvents = useMemo(() =>
+    (wineEventsData || []).map((w: { id: string; title: string; date: string | Date }) => ({
+      id: w.id,
+      title: w.title,
+      date: typeof w.date === "string" ? w.date : (w.date as Date).toISOString(),
+    })),
+    [wineEventsData]
+  );
 
   if (isLoading) {
     return <LoadingPage message="Loading itinerary..." />;
@@ -71,36 +107,6 @@ export default function ItineraryPage() {
 
   const collapseAll = () => setExpandedDays(new Set());
 
-  const handleAddActivity = async (dayId: string) => {
-    if (!newActivity.title.trim()) return;
-    try {
-      await createActivity.mutateAsync({
-        tripId,
-        itineraryDayId: dayId,
-        title: newActivity.title,
-        description: newActivity.description || undefined,
-        startTime: newActivity.startTime || undefined,
-        endTime: newActivity.endTime || undefined,
-        location: newActivity.location || undefined,
-        category: newActivity.category,
-      });
-      setNewActivity({ title: "", description: "", startTime: "", endTime: "", location: "", category: "OTHER" });
-      setAddActivityDay(null);
-      // Auto-expand the day
-      setExpandedDays((prev) => new Set([...prev, dayId]));
-    } catch {
-      // Error on createActivity.error
-    }
-  };
-
-  const handleStatusChange = async (activityId: string, status: "IDEA" | "VOTING" | "CONFIRMED" | "COMPLETED") => {
-    await updateActivity.mutateAsync({
-      tripId,
-      activityId,
-      data: { status },
-    });
-  };
-
   const handleDeleteActivity = async (activityId: string) => {
     await deleteActivity.mutateAsync({ tripId, activityId });
   };
@@ -109,16 +115,15 @@ export default function ItineraryPage() {
     await voteActivity.mutateAsync({ tripId, activityId });
   };
 
+  const handleSync = async () => {
+    await syncActivities.mutateAsync({ tripId });
+  };
+
   const getCategoryInfo = (cat: string) =>
-    ACTIVITY_CATEGORIES.find((c) => c.value === cat) || ACTIVITY_CATEGORIES[5];
+    ACTIVITY_CATEGORIES.find((c) => c.value === cat) || ACTIVITY_CATEGORIES[ACTIVITY_CATEGORIES.length - 1];
 
   const getStatusInfo = (status: string) =>
     ACTIVITY_STATUSES.find((s) => s.value === status) || ACTIVITY_STATUSES[0];
-
-  const categoryOptions = ACTIVITY_CATEGORIES.map((c) => ({
-    value: c.value,
-    label: `${c.icon} ${c.label}`,
-  }));
 
   return (
     <div className="space-y-6">
@@ -138,6 +143,16 @@ export default function ItineraryPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            isLoading={syncActivities.isPending}
+            className="gap-1.5"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Sync Meals/Wine
+          </Button>
           <Button variant="outline" size="sm" onClick={expandAll}>
             Expand All
           </Button>
@@ -200,7 +215,7 @@ export default function ItineraryPage() {
                             >
                               <span className="text-xl">{catInfo.icon}</span>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <h4 className="font-medium text-slate-100">
                                     {activity.title}
                                   </h4>
@@ -217,6 +232,19 @@ export default function ItineraryPage() {
                                   >
                                     {statusInfo.label}
                                   </Badge>
+                                  {/* Linked entity badges */}
+                                  {activity.linkedMeal && (
+                                    <Badge variant="warning" className="gap-1 text-[10px]">
+                                      <Utensils className="h-2.5 w-2.5" />
+                                      {activity.linkedMeal.title || activity.linkedMeal.mealType}
+                                    </Badge>
+                                  )}
+                                  {activity.linkedWineEvent && (
+                                    <Badge variant="purple" className="gap-1 text-[10px]">
+                                      <Wine className="h-2.5 w-2.5" />
+                                      {activity.linkedWineEvent.title}
+                                    </Badge>
+                                  )}
                                 </div>
                                 {activity.description && (
                                   <p className="mt-1 text-sm text-slate-400">
@@ -237,26 +265,56 @@ export default function ItineraryPage() {
                                       {activity.location}
                                     </span>
                                   )}
+                                  {activity.cost != null && activity.cost > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <DollarSign className="h-3 w-3" />
+                                      {formatCurrency(activity.cost)}
+                                      {activity.paidBy && <span className="text-slate-500">({activity.paidBy})</span>}
+                                    </span>
+                                  )}
+                                  {activity.reservationUrl && (
+                                    <a
+                                      href={activity.reservationUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-teal-400 hover:text-teal-300"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      Reservation
+                                    </a>
+                                  )}
+                                  {activity.confirmationCode && (
+                                    <span className="font-mono text-slate-300">
+                                      #{activity.confirmationCode}
+                                    </span>
+                                  )}
                                   <button
                                     onClick={() => handleVote(activity.id)}
                                     className="flex items-center gap-1 rounded-full border border-slate-600 px-2 py-0.5 transition-colors hover:border-teal-500 hover:text-teal-400"
                                   >
                                     <ThumbsUp className="h-3 w-3" />
-                                    {activity.voteCount || 0}
+                                    {activity.voteCount || activity._count?.votes || 0}
                                   </button>
                                 </div>
+
+                                {/* RSVP Section */}
+                                <ActivityRsvpSection
+                                  tripId={tripId}
+                                  activityId={activity.id}
+                                  rsvps={activity.rsvps || []}
+                                  currentMemberId={currentMemberId}
+                                />
                               </div>
                               <div className="flex shrink-0 gap-1">
-                                {activity.status === "IDEA" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => handleStatusChange(activity.id, "CONFIRMED")}
-                                    title="Confirm"
-                                  >
-                                    <ThumbsUp className="h-4 w-4 text-green-400" />
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => setEditActivity(activity)}
+                                  title="Edit"
+                                >
+                                  <Pencil className="h-4 w-4 text-slate-400" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon-sm"
@@ -299,96 +357,29 @@ export default function ItineraryPage() {
         />
       )}
 
-      {/* Add Activity Dialog */}
-      <Dialog open={!!addActivityDay} onOpenChange={(open) => !open && setAddActivityDay(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-teal-400" />
-              Add Activity
-            </DialogTitle>
-          </DialogHeader>
+      {/* Add Activity Modal */}
+      <ActivityFormModal
+        open={!!addActivityDay}
+        onOpenChange={(open) => { if (!open) setAddActivityDay(null); }}
+        tripId={tripId}
+        dayId={addActivityDay || undefined}
+        activity={null}
+        members={members}
+        meals={meals}
+        wineEvents={wineEvents}
+      />
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="act-title" required>Title</Label>
-              <Input
-                id="act-title"
-                placeholder="e.g., Hiking at Emerald Bay"
-                value={newActivity.title}
-                onChange={(e) => setNewActivity({ ...newActivity, title: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="act-category">Category</Label>
-              <Select
-                id="act-category"
-                options={categoryOptions}
-                value={newActivity.category}
-                onChange={(e) => setNewActivity({ ...newActivity, category: e.target.value as typeof newActivity.category })}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="act-start">Start Time</Label>
-                <Input
-                  id="act-start"
-                  type="time"
-                  value={newActivity.startTime}
-                  onChange={(e) => setNewActivity({ ...newActivity, startTime: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="act-end">End Time</Label>
-                <Input
-                  id="act-end"
-                  type="time"
-                  value={newActivity.endTime}
-                  onChange={(e) => setNewActivity({ ...newActivity, endTime: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="act-location">Location</Label>
-              <Input
-                id="act-location"
-                placeholder="e.g., Emerald Bay State Park"
-                value={newActivity.location}
-                onChange={(e) => setNewActivity({ ...newActivity, location: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="act-desc">Description</Label>
-              <Textarea
-                id="act-desc"
-                placeholder="Details about this activity..."
-                rows={3}
-                value={newActivity.description}
-                onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddActivityDay(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => addActivityDay && handleAddActivity(addActivityDay)}
-              isLoading={createActivity.isPending}
-              disabled={!newActivity.title.trim()}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Activity
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Activity Modal */}
+      <ActivityFormModal
+        open={!!editActivity}
+        onOpenChange={(open) => { if (!open) setEditActivity(null); }}
+        tripId={tripId}
+        dayId={editActivity?.itineraryDayId || undefined}
+        activity={editActivity}
+        members={members}
+        meals={meals}
+        wineEvents={wineEvents}
+      />
     </div>
   );
 }

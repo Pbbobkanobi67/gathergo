@@ -95,6 +95,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         cost: data.cost,
         paidBy: data.paidBy,
         assignedToMemberId: data.assignedToMemberId,
+        linkedMealId: data.linkedMealId ?? undefined,
+        linkedWineEventId: data.linkedWineEventId ?? undefined,
         createdByMemberId: member.id,
       },
       include: {
@@ -103,13 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             id: true,
             guestName: true,
             role: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                avatarUrl: true,
-              },
-            },
+            user: { select: { id: true, name: true, avatarUrl: true } },
           },
         },
         assignedTo: {
@@ -117,15 +113,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             id: true,
             guestName: true,
             role: true,
-            user: {
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
+        },
+        rsvps: {
+          include: {
+            member: {
               select: {
                 id: true,
-                name: true,
-                avatarUrl: true,
+                guestName: true,
+                role: true,
+                user: { select: { id: true, name: true, avatarUrl: true } },
               },
             },
           },
         },
+        linkedMeal: { select: { id: true, title: true, mealType: true, date: true } },
+        linkedWineEvent: { select: { id: true, title: true, date: true } },
       },
     });
 

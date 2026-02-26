@@ -17,6 +17,34 @@ interface MemberInfo {
   } | null;
 }
 
+type ActivityCategoryType =
+  | "DINING" | "ADVENTURE" | "RELAXATION" | "SHOPPING" | "TRAVEL"
+  | "CHECK_IN" | "CHECK_OUT" | "MEALS" | "GAMES" | "MOVIES"
+  | "SPORTS" | "NIGHTLIFE" | "SIGHTSEEING" | "ENTERTAINMENT" | "WELLNESS" | "OTHER";
+
+interface ActivityRsvp {
+  id: string;
+  activityId: string;
+  memberId: string;
+  status: "INVITED" | "ACCEPTED" | "DECLINED" | "MAYBE";
+  respondedAt: string | null;
+  createdAt: string;
+  member: MemberInfo;
+}
+
+interface LinkedMeal {
+  id: string;
+  title: string | null;
+  mealType: string;
+  date: string;
+}
+
+interface LinkedWineEvent {
+  id: string;
+  title: string;
+  date: string;
+}
+
 interface Activity {
   id: string;
   tripId: string;
@@ -29,7 +57,7 @@ interface Activity {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
-  category: "DINING" | "ADVENTURE" | "RELAXATION" | "SHOPPING" | "TRAVEL" | "OTHER";
+  category: ActivityCategoryType;
   reservationUrl: string | null;
   confirmationCode: string | null;
   cost: number | null;
@@ -40,6 +68,11 @@ interface Activity {
   createdByMemberId: string | null;
   createdBy: MemberInfo | null;
   assignedTo: MemberInfo | null;
+  linkedMealId: string | null;
+  linkedWineEventId: string | null;
+  linkedMeal: LinkedMeal | null;
+  linkedWineEvent: LinkedWineEvent | null;
+  rsvps: ActivityRsvp[];
   createdAt: string;
   _count: { votes: number };
 }
@@ -64,12 +97,14 @@ interface CreateActivityInput {
   address?: string;
   latitude?: number;
   longitude?: number;
-  category?: "DINING" | "ADVENTURE" | "RELAXATION" | "SHOPPING" | "TRAVEL" | "OTHER";
+  category?: ActivityCategoryType;
   reservationUrl?: string;
   confirmationCode?: string;
   cost?: number;
   paidBy?: string;
   assignedToMemberId?: string;
+  linkedMealId?: string | null;
+  linkedWineEventId?: string | null;
 }
 
 interface UpdateActivityInput {
@@ -178,4 +213,8 @@ export function useDeleteActivity() {
   });
 }
 
-export type { ItineraryDay, Activity, CreateActivityInput, UpdateActivityInput, DeleteActivityInput, MemberInfo };
+export type {
+  ItineraryDay, Activity, CreateActivityInput, UpdateActivityInput,
+  DeleteActivityInput, MemberInfo, ActivityRsvp, LinkedMeal, LinkedWineEvent,
+  ActivityCategoryType,
+};

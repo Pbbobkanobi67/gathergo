@@ -178,6 +178,7 @@ model TripMember {
   assignedActivities  Activity[]        @relation("ActivityAssignee")
   createdActivities   Activity[]        @relation("ActivityCreator")
   activityVotes       ActivityVote[]
+  activityRsvps       ActivityRsvp[]
   assignedMeals       MealNight[]       @relation("MealAssignee")
   createdRecipes      Recipe[]
   assignedShopping    ShoppingItem[]    @relation("ShoppingAssignee")
@@ -226,6 +227,16 @@ enum ActivityCategory {
   RELAXATION
   SHOPPING
   TRAVEL
+  CHECK_IN
+  CHECK_OUT
+  MEALS
+  GAMES
+  MOVIES
+  SPORTS
+  NIGHTLIFE
+  SIGHTSEEING
+  ENTERTAINMENT
+  WELLNESS
   OTHER
 }
 
@@ -272,8 +283,15 @@ model Activity {
   createdBy         TripMember?      @relation("ActivityCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
   createdAt         DateTime         @default(now())
 
+  // Cross-system links
+  linkedMealId      String?
+  linkedMeal        MealNight?       @relation("ActivityMealLink", fields: [linkedMealId], references: [id], onDelete: SetNull)
+  linkedWineEventId String?
+  linkedWineEvent   WineEvent?       @relation("ActivityWineLink", fields: [linkedWineEventId], references: [id], onDelete: SetNull)
+
   // Relations
   votes             ActivityVote[]
+  rsvps             ActivityRsvp[]
 
   @@index([tripId])
   @@index([itineraryDayId])
@@ -297,6 +315,28 @@ model ActivityVote {
   @@unique([activityId, memberId])
   @@index([activityId])
   @@map("activity_votes")
+}
+
+enum ActivityRsvpStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  MAYBE
+}
+
+model ActivityRsvp {
+  id          String             @id @default(cuid())
+  activityId  String
+  activity    Activity           @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      TripMember         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  status      ActivityRsvpStatus @default(INVITED)
+  respondedAt DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@unique([activityId, memberId])
+  @@index([activityId])
+  @@map("activity_rsvps")
 }
 
 // ============================================================================
@@ -339,6 +379,7 @@ model MealNight {
   // Relations
   recipes             Recipe[]
   shoppingItems       ShoppingItem[]
+  linkedActivities    Activity[]        @relation("ActivityMealLink")
 
   @@unique([tripId, date, mealType])
   @@index([tripId])
@@ -490,9 +531,10 @@ model WineEvent {
   createdAt       DateTime        @default(now())
 
   // Relations
-  entries         WineEntry[]
-  scores          WineScore[]
-  bets            WineBet[]
+  entries            WineEntry[]
+  scores             WineScore[]
+  bets               WineBet[]
+  linkedActivities   Activity[]     @relation("ActivityWineLink")
 
   @@index([tripId])
   @@index([status])
@@ -804,6 +846,9 @@ enum ActivityLogType {
   WINE_SCORE_SUBMITTED
   WINE_BET_PLACED
   ACTIVITY_ADDED
+  ACTIVITY_UPDATED
+  ACTIVITY_RSVP_SENT
+  ACTIVITY_RSVP_RESPONDED
   ACTIVITY_VOTED
   PACKING_ITEM_ADDED
   PHOTO_UPLOADED

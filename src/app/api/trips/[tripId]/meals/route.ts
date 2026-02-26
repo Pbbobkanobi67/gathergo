@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/clerk";
+import { getCurrentUser, getUserTripMember } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { mealNightCreateSchema } from "@/lib/validations";
 import { logActivity } from "@/lib/activity";
+
+const MEAL_DEFAULT_HOURS: Record<string, number> = {
+  BREAKFAST: 8,
+  LUNCH: 12,
+  DINNER: 18,
+  SNACKS: 15,
+};
 
 interface RouteParams {
   params: Promise<{ tripId: string }>;
@@ -161,6 +168,39 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       entityType: "meal",
       entityId: meal.id,
     });
+
+    // Auto-create linked itinerary activity
+    try {
+      const mealDate = new Date(data.date);
+      const matchingDay = await prisma.itineraryDay.findFirst({
+        where: {
+          tripId,
+          date: {
+            gte: new Date(mealDate.toISOString().slice(0, 10) + "T00:00:00Z"),
+            lt: new Date(mealDate.toISOString().slice(0, 10) + "T23:59:59Z"),
+          },
+        },
+      });
+      if (matchingDay) {
+        const member = await getUserTripMember(user.id, tripId);
+        const hour = MEAL_DEFAULT_HOURS[data.mealType] ?? 12;
+        const startTime = new Date(mealDate);
+        startTime.setUTCHours(hour, 0, 0, 0);
+        await prisma.activity.create({
+          data: {
+            tripId,
+            itineraryDayId: matchingDay.id,
+            title: meal.title || `${data.mealType.charAt(0) + data.mealType.slice(1).toLowerCase()}`,
+            category: "MEALS",
+            startTime,
+            linkedMealId: meal.id,
+            createdByMemberId: member?.id,
+          },
+        });
+      }
+    } catch (e) {
+      console.error("Auto-sync meal to itinerary failed:", e);
+    }
 
     return NextResponse.json({ success: true, data: meal }, { status: 201 });
   } catch (error) {

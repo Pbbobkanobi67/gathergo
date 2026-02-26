@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/clerk";
+import { getCurrentUser, getUserTripMember } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 import { wineEventCreateSchema } from "@/lib/validations";
 import { logActivity } from "@/lib/activity";
@@ -106,6 +106,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       entityType: "wineEvent",
       entityId: wineEvent.id,
     });
+
+    // Auto-create linked itinerary activity
+    try {
+      const eventDate = new Date(data.date);
+      const matchingDay = await prisma.itineraryDay.findFirst({
+        where: {
+          tripId,
+          date: {
+            gte: new Date(eventDate.toISOString().slice(0, 10) + "T00:00:00Z"),
+            lt: new Date(eventDate.toISOString().slice(0, 10) + "T23:59:59Z"),
+          },
+        },
+      });
+      if (matchingDay) {
+        const member = await getUserTripMember(user.id, tripId);
+        const startTime = new Date(eventDate);
+        startTime.setUTCHours(19, 0, 0, 0);
+        await prisma.activity.create({
+          data: {
+            tripId,
+            itineraryDayId: matchingDay.id,
+            title: wineEvent.title,
+            category: "DINING",
+            startTime,
+            linkedWineEventId: wineEvent.id,
+            createdByMemberId: member?.id,
+          },
+        });
+      }
+    } catch (e) {
+      console.error("Auto-sync wine event to itinerary failed:", e);
+    }
 
     return NextResponse.json({ success: true, data: wineEvent }, { status: 201 });
   } catch (error) {

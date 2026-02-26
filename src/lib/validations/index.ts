@@ -62,15 +62,34 @@ export const activityCreateSchema = z.object({
   address: z.string().max(500).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
-  category: z.enum(["DINING", "ADVENTURE", "RELAXATION", "SHOPPING", "TRAVEL", "OTHER"]).default("OTHER"),
+  category: z.enum([
+    "DINING", "ADVENTURE", "RELAXATION", "SHOPPING", "TRAVEL",
+    "CHECK_IN", "CHECK_OUT", "MEALS", "GAMES", "MOVIES",
+    "SPORTS", "NIGHTLIFE", "SIGHTSEEING", "ENTERTAINMENT", "WELLNESS", "OTHER",
+  ]).default("OTHER"),
   reservationUrl: urlSchema,
   confirmationCode: z.string().max(100).optional(),
   cost: z.number().min(0).optional(),
   paidBy: z.string().max(100).optional(),
   assignedToMemberId: z.string().cuid().optional(),
+  linkedMealId: z.string().cuid().optional().nullable(),
+  linkedWineEventId: z.string().cuid().optional().nullable(),
 });
 
 export type ActivityCreateInput = z.infer<typeof activityCreateSchema>;
+
+// Activity RSVP validation
+export const activityRsvpSchema = z.object({
+  memberIds: z.array(z.string().cuid()).min(1, "Select at least one member"),
+});
+
+export type ActivityRsvpInput = z.infer<typeof activityRsvpSchema>;
+
+export const activityRsvpResponseSchema = z.object({
+  status: z.enum(["ACCEPTED", "DECLINED", "MAYBE"]),
+});
+
+export type ActivityRsvpResponseInput = z.infer<typeof activityRsvpResponseSchema>;
 
 // Meal validation
 export const mealNightCreateSchema = z.object({

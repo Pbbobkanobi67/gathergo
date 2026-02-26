@@ -39,7 +39,25 @@ export const ACTIVITY_CATEGORIES = [
   { value: "RELAXATION", label: "Relaxation", icon: "🧘", color: "bg-blue-500" },
   { value: "SHOPPING", label: "Shopping", icon: "🛍️", color: "bg-pink-500" },
   { value: "TRAVEL", label: "Travel", icon: "🚗", color: "bg-purple-500" },
+  { value: "CHECK_IN", label: "Check-In", icon: "🏠", color: "bg-teal-500" },
+  { value: "CHECK_OUT", label: "Check-Out", icon: "🚪", color: "bg-teal-600" },
+  { value: "MEALS", label: "Meals", icon: "🍳", color: "bg-amber-500" },
+  { value: "GAMES", label: "Games", icon: "🎲", color: "bg-indigo-500" },
+  { value: "MOVIES", label: "Movies", icon: "🎬", color: "bg-red-500" },
+  { value: "SPORTS", label: "Sports", icon: "⚽", color: "bg-emerald-500" },
+  { value: "NIGHTLIFE", label: "Nightlife", icon: "🌙", color: "bg-violet-500" },
+  { value: "SIGHTSEEING", label: "Sightseeing", icon: "📸", color: "bg-sky-500" },
+  { value: "ENTERTAINMENT", label: "Entertainment", icon: "🎭", color: "bg-fuchsia-500" },
+  { value: "WELLNESS", label: "Wellness", icon: "💆", color: "bg-cyan-500" },
   { value: "OTHER", label: "Other", icon: "📌", color: "bg-slate-500" },
+] as const;
+
+// Activity RSVP Statuses
+export const ACTIVITY_RSVP_STATUSES = [
+  { value: "INVITED", label: "Invited", color: "bg-slate-500", icon: "📩" },
+  { value: "ACCEPTED", label: "Accepted", color: "bg-green-500", icon: "✓" },
+  { value: "DECLINED", label: "Declined", color: "bg-red-500", icon: "✕" },
+  { value: "MAYBE", label: "Maybe", color: "bg-amber-500", icon: "?" },
 ] as const;
 
 // Activity Statuses
@@ -245,6 +263,9 @@ export const ACTIVITY_LOG_TYPES = [
   { value: "WINE_SCORE_SUBMITTED", label: "Wine Score Submitted", icon: "Wine", color: "text-purple-400" },
   { value: "WINE_BET_PLACED", label: "Wine Bet Placed", icon: "Trophy", color: "text-amber-400" },
   { value: "ACTIVITY_ADDED", label: "Activity Added", icon: "Calendar", color: "text-blue-400" },
+  { value: "ACTIVITY_UPDATED", label: "Activity Updated", icon: "Calendar", color: "text-amber-400" },
+  { value: "ACTIVITY_RSVP_SENT", label: "RSVP Sent", icon: "Send", color: "text-blue-400" },
+  { value: "ACTIVITY_RSVP_RESPONDED", label: "RSVP Response", icon: "UserCheck", color: "text-green-400" },
   { value: "ACTIVITY_VOTED", label: "Activity Voted", icon: "ThumbsUp", color: "text-blue-400" },
   { value: "PACKING_ITEM_ADDED", label: "Packing Item Added", icon: "Package", color: "text-slate-400" },
   { value: "PHOTO_UPLOADED", label: "Photo Uploaded", icon: "Camera", color: "text-pink-400" },
