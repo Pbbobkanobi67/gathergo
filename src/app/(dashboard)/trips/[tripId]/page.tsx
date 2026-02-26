@@ -225,7 +225,7 @@ export default function TripDetailPage() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {quickLinks.map((link) => (
                   <Link key={link.href} href={link.href}>
-                    <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/50 p-4 transition-colors hover:border-teal-500 hover:bg-slate-800">
+                    <div className="flex h-24 flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/50 p-4 transition-colors hover:border-teal-500 hover:bg-slate-800">
                       <link.icon className="h-6 w-6 text-teal-400" />
                       <span className="text-sm font-medium text-slate-200">{link.label}</span>
                       {link.count > 0 && (
