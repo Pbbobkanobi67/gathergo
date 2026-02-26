@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Pencil, Trash2, Check, X } from "lucide-react";
+import { Search, Pencil, Trash2, Check, X, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAdminActivity, useAdminUpdateActivity, useAdminDeleteActivity } from "@/hooks/useAdmin";
@@ -13,6 +13,7 @@ export default function AdminActivityPage() {
   const [page, setPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useAdminActivity({ search: search || undefined, type: typeFilter || undefined, page, limit: 20 });
   const updateMutation = useAdminUpdateActivity();
@@ -31,6 +32,43 @@ export default function AdminActivityPage() {
   const handleDelete = (id: string) => {
     if (confirm("Delete this activity log entry?")) {
       deleteMutation.mutate(id);
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} activity log entries?`)) return;
+    for (const id of selectedIds) {
+      deleteMutation.mutate(id);
+    }
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const items = data?.items || [];
+  const allOnPageSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id));
+
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const item of items) next.delete(item.id);
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const item of items) next.add(item.id);
+        return next;
+      });
     }
   };
 
@@ -63,6 +101,17 @@ export default function AdminActivityPage() {
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
         </select>
+        {selectedIds.size > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            className="gap-1.5"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete {selectedIds.size} selected
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -70,6 +119,16 @@ export default function AdminActivityPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-700 bg-slate-800/50">
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={allOnPageSelected}
+                  onChange={toggleSelectAll}
+                  disabled={items.length === 0}
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-500/20"
+                  title="Select all"
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Type</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Action</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">Trip</th>
@@ -80,17 +139,25 @@ export default function AdminActivityPage() {
           <tbody className="divide-y divide-slate-700">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">Loading...</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Loading...</td>
               </tr>
-            ) : !data || data.items.length === 0 ? (
+            ) : items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">No activity logs found</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">No activity logs found</td>
               </tr>
             ) : (
-              data.items.map((item) => {
+              items.map((item) => {
                 const typeInfo = ACTIVITY_LOG_TYPES.find((t) => t.value === item.type);
                 return (
-                  <tr key={item.id} className="hover:bg-slate-800/50">
+                  <tr key={item.id} className={`hover:bg-slate-800/50 ${selectedIds.has(item.id) ? "bg-teal-500/5" : ""}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-500/20"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary" className="text-xs">
                         {typeInfo?.label || item.type}
@@ -117,7 +184,7 @@ export default function AdminActivityPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-300">
-                      {(item as unknown as Record<string, unknown>).trip ? ((item as unknown as Record<string, unknown>).trip as { title: string }).title : "—"}
+                      {(item as unknown as Record<string, unknown>).trip ? ((item as unknown as Record<string, unknown>).trip as { title: string }).title : "\u2014"}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-400">
                       {new Date(item.createdAt).toLocaleString()}
@@ -154,7 +221,7 @@ export default function AdminActivityPage() {
       {data && data.total > 20 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-slate-400">
-            Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, data.total)} of {data.total}
+            Showing {(page - 1) * 20 + 1}\u2013{Math.min(page * 20, data.total)} of {data.total}
           </p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
