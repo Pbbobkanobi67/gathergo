@@ -165,7 +165,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Send confirmation email
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const tripLink = `${appUrl}/trip/${trip.id}?token=${guestToken}`;
+    const tripLink = `${appUrl}/trips/${trip.id}?token=${guestToken}`;
 
     const emailContent = rsvpConfirmationEmail({
       guestName: data.name,

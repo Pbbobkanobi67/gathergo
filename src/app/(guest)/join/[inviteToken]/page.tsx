@@ -117,7 +117,7 @@ export default function GuestJoinPage() {
 
       // Redirect to trip page after a brief delay
       setTimeout(() => {
-        router.push(`/trip/${data.data.tripId}`);
+        router.push(`/trips/${data.data.tripId}`);
       }, 2000);
     } catch {
       setError("Failed to join trip");
