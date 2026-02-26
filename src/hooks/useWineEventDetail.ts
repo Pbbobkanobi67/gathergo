@@ -97,12 +97,84 @@ async function voteActivity(input: { tripId: string; activityId: string; vote?: 
   return (await res.json()).data;
 }
 
+// --- Wine Entry Update ---
+
+interface UpdateEntryInput {
+  tripId: string;
+  eventId: string;
+  entryId: string;
+  data: {
+    wineName?: string;
+    winery?: string;
+    vintage?: number;
+    varietal?: string;
+    price?: number;
+    notes?: string;
+    imageUrl?: string;
+  };
+}
+
+async function updateEntry(input: UpdateEntryInput) {
+  const { tripId, eventId, entryId, data } = input;
+  const res = await fetch(`${API_BASE}/${tripId}/wine-events/${eventId}/entries/${entryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error?.message || "Failed to update entry");
+  }
+  return (await res.json()).data;
+}
+
+// --- Wine Entry Delete ---
+
+interface DeleteEntryInput {
+  tripId: string;
+  eventId: string;
+  entryId: string;
+}
+
+async function deleteEntry(input: DeleteEntryInput) {
+  const { tripId, eventId, entryId } = input;
+  const res = await fetch(`${API_BASE}/${tripId}/wine-events/${eventId}/entries/${entryId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error?.message || "Failed to delete entry");
+  }
+}
+
 // --- Hooks ---
 
 export function useSubmitWineEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: submitEntry,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wineEvent", variables.tripId, variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ["wineEvents", variables.tripId] });
+    },
+  });
+}
+
+export function useUpdateWineEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateEntry,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wineEvent", variables.tripId, variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ["wineEvents", variables.tripId] });
+    },
+  });
+}
+
+export function useDeleteWineEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteEntry,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["wineEvent", variables.tripId, variables.eventId] });
       queryClient.invalidateQueries({ queryKey: ["wineEvents", variables.tripId] });

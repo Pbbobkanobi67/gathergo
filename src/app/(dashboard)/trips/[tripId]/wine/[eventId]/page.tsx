@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -11,7 +11,7 @@ import {
   Star,
   DollarSign,
   EyeOff,
-  Hash,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,28 +30,32 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useWineEvent } from "@/hooks/useWineEvents";
-import { useSubmitWineEntry, usePlaceWineBet } from "@/hooks/useWineEventDetail";
-import { formatDate } from "@/lib/utils";
+import { usePlaceWineBet } from "@/hooks/useWineEventDetail";
 import { HOOD_BUCKS, WINE_EVENT_STATUSES } from "@/constants";
+import { formatDate } from "@/lib/utils";
+import { WineEventFormModal } from "@/components/wine/WineEventFormModal";
+import { WineEntryFormModal } from "@/components/wine/WineEntryFormModal";
+import { WineScoringModal } from "@/components/wine/WineScoringModal";
+import { WineEntryCard } from "@/components/wine/WineEntryCard";
+import { WineBetCard } from "@/components/wine/WineBetCard";
+import type { WineEntryWithSubmitter } from "@/types";
+import { useDeleteWineEntry } from "@/hooks/useWineEventDetail";
 
 export default function WineEventDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const tripId = params.tripId as string;
   const eventId = params.eventId as string;
   const { data: event, isLoading } = useWineEvent(tripId, eventId);
-  const submitEntry = useSubmitWineEntry();
   const placeBet = usePlaceWineBet();
+  const deleteEntry = useDeleteWineEntry();
 
-  const [entryOpen, setEntryOpen] = useState(false);
+  const [eventFormOpen, setEventFormOpen] = useState(false);
+  const [entryFormOpen, setEntryFormOpen] = useState(false);
+  const [scoringOpen, setScoringOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<WineEntryWithSubmitter | null>(null);
+
   const [betOpen, setBetOpen] = useState(false);
-  const [newEntry, setNewEntry] = useState({
-    wineName: "",
-    winery: "",
-    vintage: "",
-    varietal: "",
-    price: "",
-    notes: "",
-  });
   const [newBet, setNewBet] = useState({
     predictedFirst: "",
     predictedSecond: "",
@@ -65,26 +69,6 @@ export default function WineEventDetailPage() {
   }
 
   if (!event) return null;
-
-  const handleSubmitEntry = async () => {
-    if (!newEntry.wineName.trim() || !newEntry.price) return;
-    try {
-      await submitEntry.mutateAsync({
-        tripId,
-        eventId,
-        wineName: newEntry.wineName,
-        winery: newEntry.winery || undefined,
-        vintage: newEntry.vintage ? parseInt(newEntry.vintage) : undefined,
-        varietal: newEntry.varietal || undefined,
-        price: parseFloat(newEntry.price),
-        notes: newEntry.notes || undefined,
-      });
-      setNewEntry({ wineName: "", winery: "", vintage: "", varietal: "", price: "", notes: "" });
-      setEntryOpen(false);
-    } catch {
-      // Error on submitEntry.error
-    }
-  };
 
   const handlePlaceBet = async () => {
     if (!newBet.predictedFirst || !newBet.predictedSecond || !newBet.predictedThird) return;
@@ -105,14 +89,42 @@ export default function WineEventDetailPage() {
     }
   };
 
+  const handleDeleteEntry = async (entry: WineEntryWithSubmitter) => {
+    try {
+      await deleteEntry.mutateAsync({ tripId, eventId, entryId: entry.id });
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleEditEntry = (entry: WineEntryWithSubmitter) => {
+    setEditingEntry(entry);
+    setEntryFormOpen(true);
+  };
+
+  const handleEntryFormClose = (open: boolean) => {
+    setEntryFormOpen(open);
+    if (!open) setEditingEntry(null);
+  };
+
+  const handleEventFormClose = (open: boolean) => {
+    setEventFormOpen(open);
+    // If event was deleted, navigate back
+    if (!open && !event) {
+      router.push(`/trips/${tripId}/wine`);
+    }
+  };
+
   const statusInfo = WINE_EVENT_STATUSES.find((s) => s.value === event.status) || WINE_EVENT_STATUSES[0];
   const entries = event.entries || [];
   const scores = event.scores || [];
   const bets = event.bets || [];
   const isBlind = event.status === "SCORING" || event.status === "OPEN";
   const isRevealed = event.status === "REVEAL" || event.status === "COMPLETE";
+  const canEditEntries = event.status === "SETUP" || event.status === "OPEN";
+  const showDetails = isRevealed || event.status === "SETUP";
 
-  const entryOptions = entries.map((e: { id: string; bagNumber: number; wineName: string }) => ({
+  const entryOptions = entries.map((e) => ({
     value: e.id,
     label: isRevealed ? `Bag #${e.bagNumber} - ${e.wineName}` : `Bag #${e.bagNumber}`,
   }));
@@ -135,17 +147,31 @@ export default function WineEventDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {(event.status === "SETUP" || event.status === "OPEN") && (
-            <Button onClick={() => setEntryOpen(true)} className="gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setEventFormOpen(true)}
+            className="text-slate-400 hover:text-slate-200"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          {canEditEntries && (
+            <Button onClick={() => setEntryFormOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
               Add Wine
             </Button>
           )}
           {event.status === "SCORING" && entries.length > 0 && (
-            <Button onClick={() => setBetOpen(true)} variant="amber" className="gap-2">
-              <DollarSign className="h-4 w-4" />
-              Place Bet
-            </Button>
+            <>
+              <Button onClick={() => setScoringOpen(true)} className="gap-2">
+                <Star className="h-4 w-4" />
+                Score Wines
+              </Button>
+              <Button onClick={() => setBetOpen(true)} variant="amber" className="gap-2">
+                <DollarSign className="h-4 w-4" />
+                Place Bet
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -189,77 +215,17 @@ export default function WineEventDetailPage() {
         <CardContent>
           {entries.length > 0 ? (
             <div className="space-y-3">
-              {entries.map((entry: {
-                id: string;
-                bagNumber: number;
-                wineName: string;
-                winery: string | null;
-                vintage: number | null;
-                varietal: string | null;
-                price: number;
-                notes: string | null;
-                finalPlace: number | null;
-                isRevealed: boolean;
-                submittedBy: { guestName: string | null; user: { name: string; avatarUrl: string | null } | null } | null;
-              }) => {
-                const submitterName = entry.submittedBy?.user?.name || entry.submittedBy?.guestName || null;
-                const showDetails = isRevealed || event.status === "SETUP";
-
-                return (
-                  <div
-                    key={entry.id}
-                    className={`rounded-xl border p-4 ${
-                      entry.finalPlace === 1
-                        ? "border-amber-500/30 bg-amber-500/5"
-                        : entry.finalPlace === 2
-                        ? "border-slate-400/30 bg-slate-400/5"
-                        : entry.finalPlace === 3
-                        ? "border-orange-500/30 bg-orange-500/5"
-                        : "border-slate-700 bg-slate-800/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 text-lg font-bold text-purple-400">
-                        <Hash className="mr-0.5 h-4 w-4" />
-                        {entry.bagNumber}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-slate-100">
-                            {showDetails ? entry.wineName : `Bag #${entry.bagNumber}`}
-                          </h3>
-                          {entry.finalPlace && (
-                            <Badge variant={entry.finalPlace === 1 ? "warning" : "secondary"}>
-                              {entry.finalPlace === 1 ? "🥇 1st" : entry.finalPlace === 2 ? "🥈 2nd" : "🥉 3rd"}
-                            </Badge>
-                          )}
-                        </div>
-                        {showDetails && (
-                          <div className="mt-1 flex flex-wrap gap-3 text-sm text-slate-400">
-                            {entry.winery && <span>{entry.winery}</span>}
-                            {entry.vintage && <span>{entry.vintage}</span>}
-                            {entry.varietal && <span>{entry.varietal}</span>}
-                            <span className="text-green-400">${entry.price.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {entry.notes && showDetails && (
-                          <p className="mt-1 text-xs text-slate-500">{entry.notes}</p>
-                        )}
-                      </div>
-                      {submitterName && showDetails && (
-                        <div className="flex items-center gap-1.5 rounded-full bg-slate-800 px-2 py-1">
-                          <UserAvatar
-                            name={submitterName}
-                            src={entry.submittedBy?.user?.avatarUrl}
-                            size="sm"
-                          />
-                          <span className="text-xs text-slate-300">{submitterName}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {entries.map((entry) => (
+                <WineEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  isBlind={isBlind}
+                  showDetails={showDetails}
+                  canEdit={canEditEntries}
+                  onEdit={handleEditEntry}
+                  onDelete={handleDeleteEntry}
+                />
+              ))}
             </div>
           ) : (
             <p className="text-center text-sm text-slate-500">No wine entries yet. Add one to get started!</p>
@@ -278,39 +244,9 @@ export default function WineEventDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {bets.map((bet: {
-                id: string;
-                betAmountHoodBucks: number;
-                betAmountCash: number;
-                isCorrect: boolean | null;
-                hoodBucksWon: number;
-                member: { guestName: string | null; user: { name: string; avatarUrl: string | null } | null } | null;
-              }) => {
-                const betterName = bet.member?.user?.name || bet.member?.guestName || "Guest";
-                return (
-                  <div
-                    key={bet.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <UserAvatar name={betterName} src={bet.member?.user?.avatarUrl} size="md" />
-                      <div>
-                        <p className="font-medium text-slate-100">{betterName}</p>
-                        <p className="text-xs text-slate-400">
-                          {bet.betAmountHoodBucks > 0 && `${bet.betAmountHoodBucks} ${HOOD_BUCKS.CURRENCY_SYMBOL}`}
-                          {bet.betAmountHoodBucks > 0 && bet.betAmountCash > 0 && " + "}
-                          {bet.betAmountCash > 0 && `$${bet.betAmountCash.toFixed(2)}`}
-                        </p>
-                      </div>
-                    </div>
-                    {bet.isCorrect !== null && (
-                      <Badge variant={bet.isCorrect ? "success" : "secondary"}>
-                        {bet.isCorrect ? `Won ${bet.hoodBucksWon} ${HOOD_BUCKS.CURRENCY_SYMBOL}` : "Lost"}
-                      </Badge>
-                    )}
-                  </div>
-                );
-              })}
+              {bets.map((bet) => (
+                <WineBetCard key={bet.id} bet={bet} />
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -347,102 +283,33 @@ export default function WineEventDetailPage() {
         </Card>
       )}
 
-      {/* Add Wine Entry Dialog */}
-      <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wine className="h-5 w-5 text-purple-400" />
-              Add Wine Entry
-            </DialogTitle>
-            <DialogDescription>
-              Submit your wine. It will be assigned the next bag number.
-            </DialogDescription>
-          </DialogHeader>
+      {/* Edit Event Modal */}
+      <WineEventFormModal
+        open={eventFormOpen}
+        onOpenChange={handleEventFormClose}
+        tripId={tripId}
+        event={event}
+      />
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="wine-name" required>Wine Name</Label>
-              <Input
-                id="wine-name"
-                placeholder="e.g., 2019 Caymus Cabernet"
-                value={newEntry.wineName}
-                onChange={(e) => setNewEntry({ ...newEntry, wineName: e.target.value })}
-              />
-            </div>
+      {/* Add/Edit Entry Modal */}
+      <WineEntryFormModal
+        open={entryFormOpen}
+        onOpenChange={handleEntryFormClose}
+        tripId={tripId}
+        eventId={eventId}
+        entry={editingEntry}
+      />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="entry-winery">Winery</Label>
-                <Input
-                  id="entry-winery"
-                  placeholder="e.g., Caymus Vineyards"
-                  value={newEntry.winery}
-                  onChange={(e) => setNewEntry({ ...newEntry, winery: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="entry-varietal">Varietal</Label>
-                <Input
-                  id="entry-varietal"
-                  placeholder="e.g., Cabernet Sauvignon"
-                  value={newEntry.varietal}
-                  onChange={(e) => setNewEntry({ ...newEntry, varietal: e.target.value })}
-                />
-              </div>
-            </div>
+      {/* Scoring Modal */}
+      <WineScoringModal
+        open={scoringOpen}
+        onOpenChange={setScoringOpen}
+        tripId={tripId}
+        eventId={eventId}
+        entries={entries}
+      />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="entry-vintage">Vintage Year</Label>
-                <Input
-                  id="entry-vintage"
-                  type="number"
-                  placeholder="e.g., 2019"
-                  value={newEntry.vintage}
-                  onChange={(e) => setNewEntry({ ...newEntry, vintage: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="entry-price" required>Price ($)</Label>
-                <Input
-                  id="entry-price"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 24.99"
-                  value={newEntry.price}
-                  onChange={(e) => setNewEntry({ ...newEntry, price: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="entry-notes">Notes</Label>
-              <Input
-                id="entry-notes"
-                placeholder="Tasting notes, pairing suggestions..."
-                value={newEntry.notes}
-                onChange={(e) => setNewEntry({ ...newEntry, notes: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEntryOpen(false)}>Cancel</Button>
-            <Button
-              onClick={handleSubmitEntry}
-              isLoading={submitEntry.isPending}
-              disabled={!newEntry.wineName.trim() || !newEntry.price}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Submit Wine
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Place Bet Dialog */}
+      {/* Place Bet Dialog (kept inline — straightforward) */}
       <Dialog open={betOpen} onOpenChange={setBetOpen}>
         <DialogContent>
           <DialogHeader>
