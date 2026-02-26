@@ -32,6 +32,7 @@ import {
   useCreateDocument,
   useDeleteDocument,
 } from "@/hooks/useDocuments";
+import { useTrip } from "@/hooks/useTrip";
 import { formatDate } from "@/lib/utils";
 import { DOCUMENT_CATEGORIES } from "@/constants";
 
@@ -39,6 +40,7 @@ export default function DocumentsPage() {
   const params = useParams();
   const tripId = params.tripId as string;
   const { data: documents, isLoading } = useDocuments(tripId);
+  const { data: trip } = useTrip(tripId);
   const createDoc = useCreateDocument();
   const deleteDoc = useDeleteDocument();
 
@@ -132,6 +134,39 @@ export default function DocumentsPage() {
           );
         })}
       </div>
+
+      {/* Pinned Reservation Link */}
+      {trip?.airbnbUrl && (
+        <Card className="border-pink-500/30 bg-pink-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pink-500/20">
+                <svg className="h-6 w-6 text-pink-400" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 16.894c-.156.156-.41.25-.678.25-.27 0-.522-.094-.678-.25L12 12.356l-4.538 4.538c-.156.156-.41.25-.678.25-.27 0-.522-.094-.678-.25-.375-.375-.375-.98 0-1.355L10.644 11 6.106 6.462c-.375-.375-.375-.98 0-1.355.375-.375.98-.375 1.355 0L12 9.644l4.538-4.537c.375-.375.98-.375 1.355 0 .375.375.375.98 0 1.355L13.356 11l4.538 4.538c.375.376.375.98 0 1.356z" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-pink-300">Airbnb Reservation</h3>
+                {trip.airbnbConfirmationCode && (
+                  <p className="text-sm text-slate-400">
+                    Confirmation: <span className="font-mono font-semibold text-slate-200">{trip.airbnbConfirmationCode}</span>
+                  </p>
+                )}
+              </div>
+              <a
+                href={trip.airbnbUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="secondary" className="gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  View Reservation
+                </Button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Documents */}
       {sortedCategories.length > 0 ? (

@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Bell,
   Globe,
+  MapPin,
+  Home,
   Trash2,
   Save,
 } from "lucide-react";
@@ -45,6 +47,14 @@ export default function SettingsPage() {
     startDate: "",
     endDate: "",
   });
+  const [locationSettings, setLocationSettings] = useState({
+    address: "",
+    city: "",
+    state: "",
+    airbnbUrl: "",
+    airbnbConfirmationCode: "",
+  });
+  const [locationLoaded, setLocationLoaded] = useState(false);
 
   const toDateInputValue = (date: Date | string) => {
     const d = typeof date === "string" ? new Date(date) : date;
@@ -71,6 +81,16 @@ export default function SettingsPage() {
   if (tripEndDate && tripSettings.endDate !== tripEndDate) {
     setTripSettings((prev) => ({ ...prev, endDate: tripEndDate }));
   }
+  if (trip && !locationLoaded) {
+    setLocationSettings({
+      address: trip.address || "",
+      city: trip.city || "",
+      state: trip.state || "",
+      airbnbUrl: trip.airbnbUrl || "",
+      airbnbConfirmationCode: trip.airbnbConfirmationCode || "",
+    });
+    setLocationLoaded(true);
+  }
 
   if (isLoading) {
     return <LoadingPage message="Loading settings..." />;
@@ -89,6 +109,31 @@ export default function SettingsPage() {
         endDate: new Date(tripSettings.endDate + "T12:00:00"),
       } as never,
     });
+  };
+
+  const handleSaveLocation = async () => {
+    await updateTrip.mutateAsync({
+      tripId,
+      data: {
+        address: locationSettings.address || undefined,
+        city: locationSettings.city || undefined,
+        state: locationSettings.state || undefined,
+        airbnbUrl: locationSettings.airbnbUrl || undefined,
+        airbnbConfirmationCode: locationSettings.airbnbConfirmationCode || undefined,
+      } as never,
+    });
+  };
+
+  const handleClearLocation = async () => {
+    await updateTrip.mutateAsync({
+      tripId,
+      data: {
+        address: null,
+        city: null,
+        state: null,
+      } as never,
+    });
+    setLocationSettings((prev) => ({ ...prev, address: "", city: "", state: "" }));
   };
 
   const handleDelete = async () => {
@@ -225,6 +270,107 @@ export default function SettingsPage() {
             <Save className="h-4 w-4" />
             Save Changes
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Location & Accommodation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MapPin className="h-5 w-5 text-teal-400" />
+            Location & Accommodation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="address">Street Address</Label>
+            <Input
+              id="address"
+              placeholder="e.g., 123 Mountain View Dr"
+              value={locationSettings.address}
+              onChange={(e) =>
+                setLocationSettings({ ...locationSettings, address: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                placeholder="e.g., Lake Tahoe"
+                value={locationSettings.city}
+                onChange={(e) =>
+                  setLocationSettings({ ...locationSettings, city: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="state">State</Label>
+              <Input
+                id="state"
+                placeholder="e.g., CA"
+                value={locationSettings.state}
+                onChange={(e) =>
+                  setLocationSettings({ ...locationSettings, state: e.target.value })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-700 pt-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-300">
+              <Home className="h-4 w-4" />
+              Airbnb / Accommodation
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="airbnb-url">Reservation URL</Label>
+                <Input
+                  id="airbnb-url"
+                  type="url"
+                  placeholder="https://www.airbnb.com/trips/..."
+                  value={locationSettings.airbnbUrl}
+                  onChange={(e) =>
+                    setLocationSettings({ ...locationSettings, airbnbUrl: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="airbnb-code">Confirmation Code</Label>
+                <Input
+                  id="airbnb-code"
+                  placeholder="e.g., HMB4ZY39MF"
+                  value={locationSettings.airbnbConfirmationCode}
+                  onChange={(e) =>
+                    setLocationSettings({ ...locationSettings, airbnbConfirmationCode: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={handleSaveLocation}
+              isLoading={updateTrip.isPending}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Save Location
+            </Button>
+            {(locationSettings.address || locationSettings.city || locationSettings.state) && (
+              <Button
+                variant="outline"
+                onClick={handleClearLocation}
+                className="gap-2 text-red-400 hover:text-red-300"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear Address
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
