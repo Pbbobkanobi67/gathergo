@@ -93,6 +93,15 @@ export default function TripDetailPage() {
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${trip.address ? trip.address + ", " : ""}${trip.city}, ${trip.state}`)}`
     : null;
 
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const googleMapsEmbedUrl = mapsApiKey
+    ? trip.latitude && trip.longitude
+      ? `https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${trip.latitude},${trip.longitude}&zoom=13`
+      : trip.city
+      ? `https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(`${trip.address ? trip.address + ", " : ""}${trip.city}, ${trip.state}`)}&zoom=12`
+      : null
+    : null;
+
   const quickLinks = [
     { href: `/trips/${tripId}/itinerary`, icon: Calendar, label: "Itinerary", count: 0 },
     { href: `/trips/${tripId}/meals`, icon: Utensils, label: "Meals", count: trip._count?.mealNights || 0 },
@@ -116,6 +125,18 @@ export default function TripDetailPage() {
             style={{ backgroundImage: `url(${trip.coverImageUrl})` }}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
+          </div>
+        ) : googleMapsEmbedUrl ? (
+          <div className="relative h-64 w-full">
+            <iframe
+              className="h-full w-full"
+              style={{ border: 0 }}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={googleMapsEmbedUrl}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
           </div>
         ) : (
           <div className="flex h-64 items-center justify-center bg-gradient-to-br from-teal-600 to-teal-800">

@@ -35,7 +35,7 @@ export function InviteGuestDialog({
   const [phone, setPhone] = useState("");
   const addMember = useAddMember();
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/join/${inviteToken}`;
+  const inviteLink = `${typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")}/join/${inviteToken}`;
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(inviteLink);
