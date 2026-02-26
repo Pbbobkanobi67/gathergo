@@ -62,7 +62,8 @@ export default function TripDetailPage() {
   const typeInfo = TRIP_TYPES.find((t) => t.value === trip.type) ?? TRIP_TYPES[5];
   const daysUntil = getDaysUntil(trip.startDate);
   const isUpcoming = daysUntil > 0;
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/join/${trip.inviteToken}`;
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "");
+  const inviteLink = `${baseUrl}/join/${trip.inviteToken}`;
   const venmoHandle = process.env.NEXT_PUBLIC_ORGANIZER_VENMO_HANDLE || "BobSweigart";
 
   const copyInviteLink = async () => {
@@ -70,6 +71,27 @@ export default function TripDetailPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: trip.title,
+      text: `Join me on ${trip.title}! ${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}`,
+      url: inviteLink,
+    };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(`${shareData.text}\n${inviteLink}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const googleMapsUrl = trip.latitude && trip.longitude
+    ? `https://www.google.com/maps/search/?api=1&query=${trip.latitude},${trip.longitude}`
+    : trip.city
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${trip.address ? trip.address + ", " : ""}${trip.city}, ${trip.state}`)}`
+    : null;
 
   const quickLinks = [
     { href: `/trips/${tripId}/itinerary`, icon: Calendar, label: "Itinerary", count: 0 },
@@ -124,11 +146,17 @@ export default function TripDetailPage() {
                 {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
               </p>
               {trip.city && (
-                <p className="mt-1 flex items-center gap-2 text-slate-300">
+                <a
+                  href={googleMapsUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex items-center gap-2 text-slate-300 hover:text-teal-300 transition-colors"
+                >
                   <MapPin className="h-4 w-4" />
                   {trip.address ? `${trip.address}, ` : ""}
                   {trip.city}, {trip.state}
-                </p>
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
               )}
             </div>
 
@@ -150,7 +178,7 @@ export default function TripDetailPage() {
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? "Copied!" : "Copy Invite Link"}
         </Button>
-        <Button variant="outline" className="gap-2">
+        <Button onClick={handleShare} variant="outline" className="gap-2">
           <Share2 className="h-4 w-4" />
           Share
         </Button>
