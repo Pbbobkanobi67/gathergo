@@ -25,6 +25,9 @@ async function createWineEvent(input: {
   tripId: string;
   title: string;
   date: Date | string;
+  contestType?: string;
+  entriesPerPerson?: number;
+  instructions?: string | null;
   priceRangeMin?: number;
   priceRangeMax?: number;
   hoodBucksPotSize?: number;

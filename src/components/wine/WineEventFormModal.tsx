@@ -5,6 +5,8 @@ import { Plus, Pencil, Trash2, Wine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useCreateWineEvent, useUpdateWineEvent, useDeleteWineEvent } from "@/hooks/useWineEvents";
+import { CONTEST_TYPES } from "@/constants";
 import type { WineEventWithDetails } from "@/types";
 
 interface WineEventFormModalProps {
@@ -26,11 +29,19 @@ interface WineEventFormModalProps {
 const defaultForm = {
   title: "",
   date: "",
+  contestType: "WINE",
+  entriesPerPerson: "3",
+  instructions: "",
   priceRangeMin: "4",
   priceRangeMax: "40",
   hoodBucksPotSize: "500",
   allowCashBets: true,
 };
+
+const contestTypeOptions = CONTEST_TYPES.map((t) => ({
+  value: t.value,
+  label: `${t.emoji} ${t.label}`,
+}));
 
 export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEventFormModalProps) {
   const isEdit = !!event;
@@ -45,6 +56,9 @@ export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEv
       setForm({
         title: event.title,
         date: new Date(event.date).toISOString().split("T")[0],
+        contestType: event.contestType || "WINE",
+        entriesPerPerson: String(event.entriesPerPerson || 3),
+        instructions: event.instructions || "",
         priceRangeMin: String(event.priceRangeMin),
         priceRangeMax: String(event.priceRangeMax),
         hoodBucksPotSize: String(event.hoodBucksPotSize),
@@ -67,6 +81,9 @@ export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEv
           data: {
             title: form.title,
             date: form.date,
+            contestType: form.contestType,
+            entriesPerPerson: parseInt(form.entriesPerPerson) || 3,
+            instructions: form.instructions || null,
             priceRangeMin: parseFloat(form.priceRangeMin) || 4,
             priceRangeMax: parseFloat(form.priceRangeMax) || 40,
             hoodBucksPotSize: parseInt(form.hoodBucksPotSize) || 500,
@@ -78,6 +95,9 @@ export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEv
           tripId,
           title: form.title,
           date: form.date,
+          contestType: form.contestType,
+          entriesPerPerson: parseInt(form.entriesPerPerson) || 3,
+          instructions: form.instructions || null,
           priceRangeMin: parseFloat(form.priceRangeMin) || 4,
           priceRangeMax: parseFloat(form.priceRangeMax) || 40,
           hoodBucksPotSize: parseInt(form.hoodBucksPotSize) || 500,
@@ -108,14 +128,24 @@ export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEv
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isEdit ? <Pencil className="h-5 w-5 text-purple-400" /> : <Wine className="h-5 w-5 text-purple-400" />}
-            {isEdit ? "Edit Wine Event" : "New Wine Event"}
+            {isEdit ? "Edit Tasting Event" : "New Tasting Event"}
           </DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update the wine tasting event details." : "Set up a blind wine tasting competition."}
+            {isEdit ? "Update the tasting event details." : "Set up a blind tasting competition."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="contest-type">Contest Type</Label>
+            <Select
+              id="contest-type"
+              options={contestTypeOptions}
+              value={form.contestType}
+              onChange={(e) => set("contestType", e.target.value)}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="wine-title" required>Event Name</Label>
             <Input
@@ -126,14 +156,27 @@ export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEv
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="wine-date" required>Date</Label>
-            <Input
-              id="wine-date"
-              type="date"
-              value={form.date}
-              onChange={(e) => set("date", e.target.value)}
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="wine-date" required>Date</Label>
+              <Input
+                id="wine-date"
+                type="date"
+                value={form.date}
+                onChange={(e) => set("date", e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="entries-per-person">Entries Per Person</Label>
+              <Input
+                id="entries-per-person"
+                type="number"
+                min={1}
+                max={10}
+                value={form.entriesPerPerson}
+                onChange={(e) => set("entriesPerPerson", e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -164,6 +207,17 @@ export function WineEventFormModal({ open, onOpenChange, tripId, event }: WineEv
               type="number"
               value={form.hoodBucksPotSize}
               onChange={(e) => set("hoodBucksPotSize", e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="wine-instructions">Custom Instructions (optional)</Label>
+            <Textarea
+              id="wine-instructions"
+              placeholder="Any special rules or notes for participants..."
+              value={form.instructions}
+              onChange={(e) => set("instructions", e.target.value)}
+              rows={3}
             />
           </div>
 

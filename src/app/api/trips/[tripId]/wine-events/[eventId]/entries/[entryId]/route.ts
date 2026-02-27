@@ -49,6 +49,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.price !== undefined) updateData.price = body.price;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+    if (body.bagNumber !== undefined) updateData.bagNumber = body.bagNumber;
 
     const entry = await prisma.wineEntry.update({
       where: { id: entryId },

@@ -118,12 +118,22 @@ export const PACKING_CATEGORIES = [
   { value: "OTHER", label: "Other", icon: "📦" },
 ] as const;
 
+// Contest Types
+export const CONTEST_TYPES = [
+  { value: "WINE", label: "Wine Tasting", emoji: "🍷" },
+  { value: "CHILI", label: "Chili Cook-Off", emoji: "🌶️" },
+  { value: "BBQ", label: "BBQ Contest", emoji: "🍖" },
+  { value: "BEER", label: "Beer Tasting", emoji: "🍺" },
+  { value: "COCKTAIL", label: "Cocktail Contest", emoji: "🍸" },
+  { value: "OTHER", label: "Other", emoji: "🏆" },
+] as const;
+
 // Wine Event Statuses
 export const WINE_EVENT_STATUSES = [
   { value: "SETUP", label: "Setup", color: "bg-slate-500", description: "Configuring event" },
   { value: "OPEN", label: "Open", color: "bg-blue-500", description: "Accepting entries" },
-  { value: "SCORING", label: "Scoring", color: "bg-amber-500", description: "Taste and rate" },
-  { value: "REVEAL", label: "Reveal", color: "bg-purple-500", description: "Revealing wines" },
+  { value: "SCORING", label: "Scoring", color: "bg-amber-500", description: "Taste & rate" },
+  { value: "REVEAL", label: "Reveal", color: "bg-purple-500", description: "Results revealed" },
   { value: "COMPLETE", label: "Complete", color: "bg-green-500", description: "Results final" },
 ] as const;
 

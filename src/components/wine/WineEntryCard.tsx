@@ -1,6 +1,6 @@
 "use client";
 
-import { Hash, Pencil, Trash2 } from "lucide-react";
+import { Hash, Pencil, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/avatar";
@@ -11,12 +11,14 @@ interface WineEntryCardProps {
   isBlind: boolean;
   showDetails: boolean;
   canEdit: boolean;
+  isMyEntry?: boolean;
   onEdit: (entry: WineEntryWithSubmitter) => void;
   onDelete: (entry: WineEntryWithSubmitter) => void;
 }
 
-export function WineEntryCard({ entry, isBlind, showDetails, canEdit, onEdit, onDelete }: WineEntryCardProps) {
+export function WineEntryCard({ entry, isBlind, showDetails, canEdit, isMyEntry, onEdit, onDelete }: WineEntryCardProps) {
   const submitterName = entry.submittedBy?.user?.name || entry.submittedBy?.guestName || null;
+  const hasBagNumber = entry.bagNumber !== null && entry.bagNumber !== undefined;
 
   return (
     <div
@@ -32,18 +34,33 @@ export function WineEntryCard({ entry, isBlind, showDetails, canEdit, onEdit, on
     >
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 text-lg font-bold text-purple-400">
-          <Hash className="mr-0.5 h-4 w-4" />
-          {entry.bagNumber}
+          {hasBagNumber ? (
+            <>
+              <Hash className="mr-0.5 h-4 w-4" />
+              {entry.bagNumber}
+            </>
+          ) : (
+            <span className="text-xs text-slate-500">--</span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-slate-100">
-              {showDetails ? entry.wineName : `Bag #${entry.bagNumber}`}
+              {showDetails ? entry.wineName : hasBagNumber ? `Bag #${entry.bagNumber}` : "Pending"}
             </h3>
             {entry.finalPlace && (
               <Badge variant={entry.finalPlace === 1 ? "warning" : "secondary"}>
                 {entry.finalPlace === 1 ? "\u{1F947} 1st" : entry.finalPlace === 2 ? "\u{1F948} 2nd" : "\u{1F949} 3rd"}
               </Badge>
+            )}
+            {isMyEntry && (
+              <Badge variant="outline" className="text-[10px]">
+                <User className="mr-1 h-3 w-3" />
+                Mine
+              </Badge>
+            )}
+            {!hasBagNumber && !showDetails && (
+              <Badge variant="secondary" className="text-[10px]">Pending</Badge>
             )}
           </div>
           {showDetails && (
@@ -51,7 +68,7 @@ export function WineEntryCard({ entry, isBlind, showDetails, canEdit, onEdit, on
               {entry.winery && <span>{entry.winery}</span>}
               {entry.vintage && <span>{entry.vintage}</span>}
               {entry.varietal && <span>{entry.varietal}</span>}
-              <span className="text-green-400">${entry.price.toFixed(2)}</span>
+              {entry.price > 0 && <span className="text-green-400">${entry.price.toFixed(2)}</span>}
             </div>
           )}
           {entry.notes && showDetails && (

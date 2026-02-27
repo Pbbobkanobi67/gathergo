@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
   Plus,
-  Wine,
   Trophy,
   Star,
   DollarSign,
   EyeOff,
   Pencil,
+  Eye,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,17 +30,22 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useWineEvent } from "@/hooks/useWineEvents";
-import { usePlaceWineBet } from "@/hooks/useWineEventDetail";
-import { HOOD_BUCKS, WINE_EVENT_STATUSES } from "@/constants";
+import { useWineEvent, useUpdateWineEvent } from "@/hooks/useWineEvents";
+import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners } from "@/hooks/useWineEventDetail";
+import { useMembers } from "@/hooks/useMembers";
+import { useSafeUser } from "@/components/shared/SafeClerkUser";
+import { HOOD_BUCKS, WINE_EVENT_STATUSES, CONTEST_TYPES } from "@/constants";
 import { formatDate } from "@/lib/utils";
 import { WineEventFormModal } from "@/components/wine/WineEventFormModal";
 import { WineEntryFormModal } from "@/components/wine/WineEntryFormModal";
 import { WineScoringModal } from "@/components/wine/WineScoringModal";
 import { WineEntryCard } from "@/components/wine/WineEntryCard";
 import { WineBetCard } from "@/components/wine/WineBetCard";
+import { ContestStepper } from "@/components/wine/ContestStepper";
+import { HowToPlay } from "@/components/wine/HowToPlay";
+import { BagAssignmentPanel } from "@/components/wine/BagAssignmentPanel";
+import { WinnerConfettiModal } from "@/components/wine/WinnerConfettiModal";
 import type { WineEntryWithSubmitter } from "@/types";
-import { useDeleteWineEntry } from "@/hooks/useWineEventDetail";
 
 export default function WineEventDetailPage() {
   const params = useParams();
@@ -47,13 +53,20 @@ export default function WineEventDetailPage() {
   const tripId = params.tripId as string;
   const eventId = params.eventId as string;
   const { data: event, isLoading } = useWineEvent(tripId, eventId);
+  const { data: membersData } = useMembers(tripId);
+  const { user: clerkUser } = useSafeUser();
   const placeBet = usePlaceWineBet();
   const deleteEntry = useDeleteWineEntry();
+  const updateEvent = useUpdateWineEvent();
+  const revealWinners = useRevealWinners();
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [scoringOpen, setScoringOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WineEntryWithSubmitter | null>(null);
+  const [confettiOpen, setConfettiOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [revealResults, setRevealResults] = useState<any>(null);
 
   const [betOpen, setBetOpen] = useState(false);
   const [newBet, setNewBet] = useState({
@@ -64,11 +77,42 @@ export default function WineEventDetailPage() {
     betAmountCash: "0",
   });
 
+  // Find current user's member ID
+  const currentMemberId = useMemo(() => {
+    if (!clerkUser || !membersData) return null;
+    const found = membersData.find((m: { userId: string | null }) => m.userId === clerkUser.id);
+    return found?.id || null;
+  }, [clerkUser, membersData]);
+
+  // Check if user is organizer
+  const isOrganizer = useMemo(() => {
+    if (!membersData || !currentMemberId) return false;
+    const member = membersData.find((m: { id: string }) => m.id === currentMemberId);
+    return member?.role === "ORGANIZER" || member?.role === "CO_ORGANIZER";
+  }, [membersData, currentMemberId]);
+
   if (isLoading) {
-    return <LoadingPage message="Loading wine event..." />;
+    return <LoadingPage message="Loading tasting event..." />;
   }
 
   if (!event) return null;
+
+  const statusInfo = WINE_EVENT_STATUSES.find((s) => s.value === event.status) || WINE_EVENT_STATUSES[0];
+  const typeInfo = CONTEST_TYPES.find((t) => t.value === event.contestType) || CONTEST_TYPES[0];
+  const entries = event.entries || [];
+  const scores = event.scores || [];
+  const bets = event.bets || [];
+  const isRevealed = event.status === "REVEAL" || event.status === "COMPLETE";
+  const showDetails = isRevealed || event.status === "SETUP" || event.status === "OPEN";
+
+  // My entries (visible to me during OPEN)
+  const myEntries = entries.filter((e) => e.submittedByMemberId === currentMemberId);
+  const entriesRemaining = event.entriesPerPerson - myEntries.length;
+
+  // Entries with bag numbers (for scoring view)
+  const assignedEntries = entries.filter((e) => e.bagNumber !== null);
+  const unassignedEntries = entries.filter((e) => e.bagNumber === null);
+  const needsBagAssignment = event.status === "SCORING" && unassignedEntries.length > 0 && isOrganizer;
 
   const handlePlaceBet = async () => {
     if (!newBet.predictedFirst || !newBet.predictedSecond || !newBet.predictedThird) return;
@@ -109,22 +153,43 @@ export default function WineEventDetailPage() {
 
   const handleEventFormClose = (open: boolean) => {
     setEventFormOpen(open);
-    // If event was deleted, navigate back
     if (!open && !event) {
       router.push(`/trips/${tripId}/wine`);
     }
   };
 
-  const statusInfo = WINE_EVENT_STATUSES.find((s) => s.value === event.status) || WINE_EVENT_STATUSES[0];
-  const entries = event.entries || [];
-  const scores = event.scores || [];
-  const bets = event.bets || [];
-  const isBlind = event.status === "SCORING" || event.status === "OPEN";
-  const isRevealed = event.status === "REVEAL" || event.status === "COMPLETE";
-  const canEditEntries = event.status === "SETUP" || event.status === "OPEN";
-  const showDetails = isRevealed || event.status === "SETUP";
+  const handleStatusAdvance = async (nextStatus: string) => {
+    if (nextStatus === "REVEAL") {
+      // Use reveal endpoint for proper scoring
+      try {
+        const results = await revealWinners.mutateAsync({ tripId, eventId });
+        setRevealResults(results);
+        setConfettiOpen(true);
+      } catch {
+        // Error handled by mutation
+      }
+    } else {
+      await updateEvent.mutateAsync({
+        tripId,
+        eventId,
+        data: { status: nextStatus },
+      });
+    }
+  };
 
-  const entryOptions = entries.map((e) => ({
+  const STATUS_ORDER = ["SETUP", "OPEN", "SCORING", "REVEAL", "COMPLETE"];
+  const currentStatusIndex = STATUS_ORDER.indexOf(event.status);
+  const nextStatus = currentStatusIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[currentStatusIndex + 1] : null;
+
+  const NEXT_STATUS_LABELS: Record<string, string> = {
+    OPEN: "Open for Entries",
+    SCORING: "Start Scoring",
+    REVEAL: "Reveal Winners",
+    COMPLETE: "Complete Event",
+  };
+
+  // Entry options for bet dialog (only entries with bag numbers)
+  const entryOptions = assignedEntries.map((e) => ({
     value: e.id,
     label: isRevealed ? `Bag #${e.bagNumber} - ${e.wineName}` : `Bag #${e.bagNumber}`,
   }));
@@ -140,32 +205,37 @@ export default function WineEventDetailPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">{event.title}</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{typeInfo.emoji}</span>
+              <h1 className="text-2xl font-bold text-slate-100">{event.title}</h1>
+            </div>
             <p className="text-sm text-slate-400">
               {formatDate(event.date)} &middot; {statusInfo.label}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setEventFormOpen(true)}
-            className="text-slate-400 hover:text-slate-200"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          {canEditEntries && (
-            <Button onClick={() => setEntryFormOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Wine
+        <div className="flex flex-wrap gap-2">
+          {isOrganizer && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setEventFormOpen(true)}
+              className="text-slate-400 hover:text-slate-200"
+            >
+              <Pencil className="h-4 w-4" />
             </Button>
           )}
-          {event.status === "SCORING" && entries.length > 0 && (
+          {event.status === "OPEN" && entriesRemaining > 0 && (
+            <Button onClick={() => setEntryFormOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Entry
+            </Button>
+          )}
+          {event.status === "SCORING" && assignedEntries.length > 0 && (
             <>
               <Button onClick={() => setScoringOpen(true)} className="gap-2">
                 <Star className="h-4 w-4" />
-                Score Wines
+                Score
               </Button>
               <Button onClick={() => setBetOpen(true)} variant="amber" className="gap-2">
                 <DollarSign className="h-4 w-4" />
@@ -176,11 +246,21 @@ export default function WineEventDetailPage() {
         </div>
       </div>
 
+      {/* Contest Stepper */}
+      <ContestStepper currentStatus={event.status} />
+
+      {/* How To Play */}
+      <HowToPlay
+        contestType={event.contestType}
+        customInstructions={event.instructions}
+        status={event.status}
+      />
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
-          <p className="text-2xl font-bold text-purple-400">{entries.length}</p>
-          <p className="text-xs text-slate-400">Wines</p>
+          <p className="text-2xl font-bold text-purple-400">{event._count?.entries || 0}</p>
+          <p className="text-xs text-slate-400">Entries</p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
           <p className="text-2xl font-bold text-teal-400">{scores.length}</p>
@@ -198,40 +278,148 @@ export default function WineEventDetailPage() {
         </div>
       </div>
 
-      {/* Wine Entries */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wine className="h-5 w-5 text-purple-400" />
-            Wine Entries
-            {isBlind && (
-              <Badge variant="warning" className="ml-2 gap-1">
-                <EyeOff className="h-3 w-3" />
-                Blind
-              </Badge>
+      {/* SETUP phase: Event config summary */}
+      {event.status === "SETUP" && (
+        <Card className="border-slate-700">
+          <CardContent className="pt-6">
+            <div className="space-y-2 text-sm text-slate-300">
+              <p><strong>Type:</strong> {typeInfo.emoji} {typeInfo.label}</p>
+              <p><strong>Entries per person:</strong> {event.entriesPerPerson}</p>
+              <p><strong>Price range:</strong> ${event.priceRangeMin} - ${event.priceRangeMax}</p>
+              <p><strong>Cash bets:</strong> {event.allowCashBets ? "Allowed" : "Not allowed"}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bag Assignment Panel (admin, SCORING phase, unassigned entries) */}
+      {needsBagAssignment && (
+        <BagAssignmentPanel
+          entries={entries}
+          tripId={tripId}
+          eventId={eventId}
+          onComplete={() => {}}
+        />
+      )}
+
+      {/* My Entries Section (OPEN phase) */}
+      {event.status === "OPEN" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span className="flex items-center gap-2">
+                {typeInfo.emoji} My Entries
+                <Badge variant="secondary" className="text-xs">
+                  {myEntries.length}/{event.entriesPerPerson}
+                </Badge>
+              </span>
+              {entriesRemaining > 0 && (
+                <Button size="sm" onClick={() => setEntryFormOpen(true)} className="gap-1">
+                  <Plus className="h-3 w-3" />
+                  Add
+                </Button>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {myEntries.length > 0 ? (
+              <div className="space-y-3">
+                {myEntries.map((entry) => (
+                  <WineEntryCard
+                    key={entry.id}
+                    entry={entry}
+                    isBlind={false}
+                    showDetails={true}
+                    canEdit={true}
+                    isMyEntry={true}
+                    onEdit={handleEditEntry}
+                    onDelete={handleDeleteEntry}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-slate-500">
+                You haven&apos;t submitted any entries yet. Add up to {event.entriesPerPerson}!
+              </p>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {entries.length > 0 ? (
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All Entries (SCORING: only assigned bags, blind. REVEAL/COMPLETE: all, unmasked) */}
+      {(event.status === "SCORING" || isRevealed) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              {typeInfo.emoji} {isRevealed ? "All Entries" : "Bags"}
+              {event.status === "SCORING" && (
+                <Badge variant="warning" className="ml-2 gap-1">
+                  <EyeOff className="h-3 w-3" />
+                  Blind
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(isRevealed ? entries : assignedEntries).length > 0 ? (
+              <div className="space-y-3">
+                {(isRevealed ? entries : assignedEntries)
+                  .sort((a, b) => {
+                    // Sort by place first (1st, 2nd, 3rd), then by bag number
+                    if (a.finalPlace && b.finalPlace) return a.finalPlace - b.finalPlace;
+                    if (a.finalPlace) return -1;
+                    if (b.finalPlace) return 1;
+                    return (a.bagNumber || 0) - (b.bagNumber || 0);
+                  })
+                  .map((entry) => (
+                    <WineEntryCard
+                      key={entry.id}
+                      entry={entry}
+                      isBlind={event.status === "SCORING"}
+                      showDetails={isRevealed}
+                      canEdit={false}
+                      isMyEntry={entry.submittedByMemberId === currentMemberId}
+                      onEdit={handleEditEntry}
+                      onDelete={handleDeleteEntry}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-slate-500">
+                {event.status === "SCORING"
+                  ? "No bags assigned yet. The host needs to assign bag numbers."
+                  : "No entries yet."}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* SETUP entries (admin sees all submitted entries) */}
+      {event.status === "SETUP" && entries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              {typeInfo.emoji} Entries ({entries.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-3">
               {entries.map((entry) => (
                 <WineEntryCard
                   key={entry.id}
                   entry={entry}
-                  isBlind={isBlind}
-                  showDetails={showDetails}
-                  canEdit={canEditEntries}
+                  isBlind={false}
+                  showDetails={true}
+                  canEdit={isOrganizer}
                   onEdit={handleEditEntry}
                   onDelete={handleDeleteEntry}
                 />
               ))}
             </div>
-          ) : (
-            <p className="text-center text-sm text-slate-500">No wine entries yet. Add one to get started!</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Bets */}
       {bets.length > 0 && (
@@ -252,7 +440,7 @@ export default function WineEventDetailPage() {
         </Card>
       )}
 
-      {/* Scores */}
+      {/* Scores (REVEAL/COMPLETE) */}
       {scores.length > 0 && isRevealed && (
         <Card>
           <CardHeader>
@@ -283,6 +471,32 @@ export default function WineEventDetailPage() {
         </Card>
       )}
 
+      {/* Phase Transition Button (admin only) */}
+      {isOrganizer && nextStatus && (
+        <Button
+          onClick={() => handleStatusAdvance(nextStatus)}
+          isLoading={updateEvent.isPending || revealWinners.isPending}
+          className="w-full gap-2"
+          variant={nextStatus === "REVEAL" ? "amber" : "default"}
+          disabled={
+            (nextStatus === "SCORING" && entries.length < 2) ||
+            (nextStatus === "REVEAL" && assignedEntries.length < 2)
+          }
+        >
+          {nextStatus === "REVEAL" ? (
+            <Trophy className="h-4 w-4" />
+          ) : nextStatus === "COMPLETE" ? (
+            <Eye className="h-4 w-4" />
+          ) : (
+            <ArrowRight className="h-4 w-4" />
+          )}
+          {NEXT_STATUS_LABELS[nextStatus]}
+          {nextStatus === "SCORING" && entries.length < 2 && (
+            <span className="text-xs opacity-75">(need 2+ entries)</span>
+          )}
+        </Button>
+      )}
+
       {/* Edit Event Modal */}
       <WineEventFormModal
         open={eventFormOpen}
@@ -298,6 +512,8 @@ export default function WineEventDetailPage() {
         tripId={tripId}
         eventId={eventId}
         entry={editingEntry}
+        contestType={event.contestType}
+        entriesRemaining={entriesRemaining}
       />
 
       {/* Scoring Modal */}
@@ -309,7 +525,15 @@ export default function WineEventDetailPage() {
         entries={entries}
       />
 
-      {/* Place Bet Dialog (kept inline — straightforward) */}
+      {/* Winner Confetti Modal */}
+      <WinnerConfettiModal
+        open={confettiOpen}
+        onOpenChange={setConfettiOpen}
+        results={revealResults}
+        contestType={event.contestType}
+      />
+
+      {/* Place Bet Dialog */}
       <Dialog open={betOpen} onOpenChange={setBetOpen}>
         <DialogContent>
           <DialogHeader>

@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
+import { getCurrentUser, isUserTripOrganizer, getUserTripMember } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 
 interface RouteParams {
   params: Promise<{ tripId: string; eventId: string }>;
 }
+
+const fullEntryInclude = {
+  submittedBy: {
+    include: {
+      user: {
+        select: { id: true, name: true, email: true, avatarUrl: true },
+      },
+    },
+  },
+};
 
 // GET /api/trips/[tripId]/wine-events/[eventId] - Get single wine event with details
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -23,33 +33,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { id: eventId },
       include: {
         entries: {
-          include: {
-            submittedBy: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { bagNumber: "asc" },
+          include: fullEntryInclude,
+          orderBy: { createdAt: "asc" },
         },
         scores: {
           include: {
             member: {
               include: {
                 user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatarUrl: true,
-                  },
+                  select: { id: true, name: true, email: true, avatarUrl: true },
                 },
               },
             },
@@ -60,23 +52,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             member: {
               include: {
                 user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatarUrl: true,
-                  },
+                  select: { id: true, name: true, email: true, avatarUrl: true },
                 },
               },
             },
           },
         },
         _count: {
-          select: {
-            entries: true,
-            scores: true,
-            bets: true,
-          },
+          select: { entries: true, scores: true, bets: true },
         },
       },
     });
@@ -88,13 +71,41 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify the event belongs to the specified trip
     if (wineEvent.tripId !== tripId) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Wine event not found" } },
         { status: 404 }
       );
     }
+
+    // Get current user's member record
+    const currentMember = await getUserTripMember(user.id, tripId);
+    const isOrganizer = await isUserTripOrganizer(user.id, tripId);
+
+    // Privacy filtering based on status
+    if (wineEvent.status === "OPEN" && !isOrganizer) {
+      // Only show current user's entries during OPEN phase
+      wineEvent.entries = wineEvent.entries.filter(
+        (e) => e.submittedByMemberId === currentMember?.id
+      );
+    } else if (wineEvent.status === "SCORING" && !isOrganizer) {
+      // Strip wine details during SCORING - only show bag numbers
+      wineEvent.entries = wineEvent.entries
+        .filter((e) => e.bagNumber !== null)
+        .map((e) => ({
+          ...e,
+          wineName: `Bag #${e.bagNumber}`,
+          winery: null,
+          varietal: null,
+          vintage: null,
+          price: 0,
+          notes: null,
+          imageUrl: null,
+          submittedBy: null,
+          submittedByMemberId: null,
+        }));
+    }
+    // REVEAL, COMPLETE, SETUP: return everything unmasked
 
     return NextResponse.json({ success: true, data: wineEvent });
   } catch (error) {
@@ -119,7 +130,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify the event exists and belongs to the trip
     const existing = await prisma.wineEvent.findUnique({
       where: { id: eventId },
     });
@@ -138,33 +148,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data: body,
       include: {
         entries: {
-          include: {
-            submittedBy: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatarUrl: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { bagNumber: "asc" },
+          include: fullEntryInclude,
+          orderBy: { createdAt: "asc" },
         },
         scores: {
           include: {
             member: {
               include: {
                 user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatarUrl: true,
-                  },
+                  select: { id: true, name: true, email: true, avatarUrl: true },
                 },
               },
             },
@@ -175,23 +167,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             member: {
               include: {
                 user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    avatarUrl: true,
-                  },
+                  select: { id: true, name: true, email: true, avatarUrl: true },
                 },
               },
             },
           },
         },
         _count: {
-          select: {
-            entries: true,
-            scores: true,
-            bets: true,
-          },
+          select: { entries: true, scores: true, bets: true },
         },
       },
     });
@@ -219,7 +202,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Only the trip organizer can delete wine events
     const isOrganizer = await isUserTripOrganizer(user.id, tripId);
     if (!isOrganizer) {
       return NextResponse.json(
@@ -228,7 +210,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify the event exists and belongs to the trip
     const existing = await prisma.wineEvent.findUnique({
       where: { id: eventId },
     });

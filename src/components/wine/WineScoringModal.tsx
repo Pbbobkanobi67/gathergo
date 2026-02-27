@@ -34,19 +34,23 @@ interface EntryRating {
 export function WineScoringModal({ open, onOpenChange, tripId, eventId, entries }: WineScoringModalProps) {
   const submitScore = useSubmitWineScore();
 
+  // Only show entries that have bag numbers assigned
+  const scorableEntries = entries.filter((e) => e.bagNumber !== null && e.bagNumber !== undefined);
+
   const [tasteNotes, setTasteNotes] = useState<Record<string, EntryRating>>({});
   const [rankings, setRankings] = useState({ first: "", second: "", third: "" });
 
   useEffect(() => {
     if (open) {
       const initial: Record<string, EntryRating> = {};
-      entries.forEach((e) => {
+      scorableEntries.forEach((e) => {
         initial[e.id] = { rating: 0, notes: "" };
       });
       setTasteNotes(initial);
       setRankings({ first: "", second: "", third: "" });
     }
-  }, [open, entries]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const setRating = (entryId: string, rating: number) => {
     setTasteNotes((prev) => ({
@@ -62,7 +66,7 @@ export function WineScoringModal({ open, onOpenChange, tripId, eventId, entries 
     }));
   };
 
-  const allRated = entries.every((e) => tasteNotes[e.id]?.rating > 0);
+  const allRated = scorableEntries.every((e) => tasteNotes[e.id]?.rating > 0);
   const rankingsComplete = rankings.first && rankings.second && rankings.third;
   const canSubmit = allRated && rankingsComplete;
 
@@ -81,7 +85,7 @@ export function WineScoringModal({ open, onOpenChange, tripId, eventId, entries 
     }
   };
 
-  const entryOptions = entries.map((e) => ({
+  const entryOptions = scorableEntries.map((e) => ({
     value: e.id,
     label: `Bag #${e.bagNumber}`,
   }));
@@ -95,15 +99,15 @@ export function WineScoringModal({ open, onOpenChange, tripId, eventId, entries 
             Score Wines
           </DialogTitle>
           <DialogDescription>
-            Rate each wine blind (by bag number only), then rank your top 3.
+            Rate each entry blind (by bag number only), then rank your top 3.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Per-entry ratings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-300">Rate Each Wine</h3>
-            {entries.map((entry) => (
+            <h3 className="text-sm font-semibold text-slate-300">Rate Each Entry</h3>
+            {scorableEntries.map((entry) => (
               <div key={entry.id} className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-sm font-bold text-purple-400">

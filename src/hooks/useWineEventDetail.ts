@@ -97,6 +97,48 @@ async function voteActivity(input: { tripId: string; activityId: string; vote?: 
   return (await res.json()).data;
 }
 
+// --- Bag Assignment ---
+
+interface AssignBagsInput {
+  tripId: string;
+  eventId: string;
+  assignments: { entryId: string; bagNumber: number }[];
+}
+
+async function assignBags(input: AssignBagsInput) {
+  const { tripId, eventId, assignments } = input;
+  const res = await fetch(`${API_BASE}/${tripId}/wine-events/${eventId}/assign-bags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assignments }),
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error?.message || "Failed to assign bags");
+  }
+  return (await res.json()).data;
+}
+
+// --- Reveal Winners ---
+
+interface RevealWinnersInput {
+  tripId: string;
+  eventId: string;
+}
+
+async function revealWinners(input: RevealWinnersInput) {
+  const { tripId, eventId } = input;
+  const res = await fetch(`${API_BASE}/${tripId}/wine-events/${eventId}/reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error?.message || "Failed to reveal winners");
+  }
+  return (await res.json()).data;
+}
+
 // --- Wine Entry Update ---
 
 interface UpdateEntryInput {
@@ -111,6 +153,7 @@ interface UpdateEntryInput {
     price?: number;
     notes?: string;
     imageUrl?: string;
+    bagNumber?: number | null;
   };
 }
 
@@ -209,6 +252,29 @@ export function useVoteActivity() {
     mutationFn: voteActivity,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["itinerary", variables.tripId] });
+    },
+  });
+}
+
+export function useAssignBags() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: assignBags,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wineEvent", variables.tripId, variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ["wineEvents", variables.tripId] });
+    },
+  });
+}
+
+export function useRevealWinners() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: revealWinners,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wineEvent", variables.tripId, variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ["wineEvents", variables.tripId] });
+      queryClient.invalidateQueries({ queryKey: ["hoodBucks"] });
     },
   });
 }

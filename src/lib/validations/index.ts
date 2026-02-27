@@ -168,6 +168,9 @@ export const wineEventCreateSchema = z.object({
   tripId: z.string().cuid(),
   title: z.string().min(1, "Event title is required").max(200),
   date: dateSchema,
+  contestType: z.string().default("WINE"),
+  entriesPerPerson: z.number().int().min(1).max(10).default(3),
+  instructions: z.string().max(2000).optional().nullable(),
   priceRangeMin: z.number().min(0).default(4),
   priceRangeMax: z.number().min(0).default(40),
   hoodBucksPotSize: z.number().int().min(0).default(500),
@@ -223,6 +226,16 @@ export const wineBetCreateSchema = z.object({
 });
 
 export type WineBetCreateInput = z.infer<typeof wineBetCreateSchema>;
+
+// Bag assignment validation
+export const bagAssignmentSchema = z.object({
+  assignments: z.array(z.object({
+    entryId: z.string().cuid(),
+    bagNumber: z.number().int().min(1),
+  })).min(1),
+});
+
+export type BagAssignmentInput = z.infer<typeof bagAssignmentSchema>;
 
 // Expense validation
 export const expenseCreateSchema = z.object({

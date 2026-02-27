@@ -523,6 +523,11 @@ model WineEvent {
   priceRangeMax   Float           @default(40)
   bottleCount     Int             @default(0)
 
+  // Contest configuration
+  contestType      String          @default("WINE")
+  entriesPerPerson Int             @default(3)
+  instructions     String?
+
   // Betting
   hoodBucksPotSize Int            @default(500)
   allowCashBets   Boolean         @default(true)
@@ -546,7 +551,7 @@ model WineEntry {
   wineEventId         String
   wineEvent           WineEvent   @relation(fields: [wineEventId], references: [id], onDelete: Cascade)
 
-  bagNumber           Int
+  bagNumber           Int?
   wineName            String
   winery              String?
   vintage             Int?

@@ -9,12 +9,13 @@ import {
   Eye,
   ArrowLeft,
   Pencil,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { WINE_EVENT_STATUSES, HOOD_BUCKS } from "@/constants";
+import { WINE_EVENT_STATUSES, HOOD_BUCKS, CONTEST_TYPES } from "@/constants";
 import type { WineEventWithDetails } from "@/types";
 
 interface WineEventCardProps {
@@ -27,16 +28,16 @@ interface WineEventCardProps {
 
 const STATUS_DESCRIPTIONS: Record<string, string> = {
   SETUP: "Configure the event and set rules. Advance when ready for entries.",
-  OPEN: "Guests can submit their wine entries. Advance when all entries are in.",
-  SCORING: "Time for blind tasting! Guests rate each bag number without knowing the wine.",
-  REVEAL: "The big reveal! See which wines scored best. Advance to finalize results.",
+  OPEN: "Participants can submit their entries privately. Advance when all entries are in.",
+  SCORING: "Time for blind tasting! Rate each bag number without knowing what's inside.",
+  REVEAL: "The big reveal! See which entries scored best. Advance to finalize results.",
   COMPLETE: "Event complete! Results and Hood Bucks have been distributed.",
 };
 
 const NEXT_STATUS_LABELS: Record<string, string> = {
   SETUP: "Open for Entries",
   OPEN: "Start Scoring",
-  SCORING: "Reveal Wines",
+  SCORING: "Reveal Winners",
   REVEAL: "Complete Event",
 };
 
@@ -44,20 +45,24 @@ export function WineEventCard({ event, tripId, onEdit, onStatusAdvance, isAdvanc
   const statusInfo = WINE_EVENT_STATUSES.find((s) => s.value === event.status) || WINE_EVENT_STATUSES[0];
   const nextLabel = NEXT_STATUS_LABELS[event.status];
   const isActive = event.status !== "COMPLETE";
+  const typeInfo = CONTEST_TYPES.find((t) => t.value === event.contestType) || CONTEST_TYPES[0];
 
   return (
     <Card className={`transition-colors hover:border-purple-500/50 ${isActive ? "border-purple-500/30" : ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <Link href={`/trips/${tripId}/wine/${event.id}`} className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/20">
-              <Wine className="h-6 w-6 text-purple-400" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/20 text-2xl">
+              {typeInfo.emoji}
             </div>
             <div className="min-w-0">
               <CardTitle className="text-lg">{event.title}</CardTitle>
-              <p className="flex items-center gap-1 text-sm text-slate-400">
+              <p className="flex items-center gap-2 text-sm text-slate-400">
                 <Calendar className="h-3 w-3" />
                 {formatDate(event.date)}
+                <span className="text-slate-600">|</span>
+                <Users className="h-3 w-3" />
+                {event.entriesPerPerson} per person
               </p>
             </div>
           </Link>
@@ -95,7 +100,7 @@ export function WineEventCard({ event, tripId, onEdit, onStatusAdvance, isAdvanc
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg bg-slate-900/50 p-3 text-center">
             <p className="text-lg font-bold text-slate-100">{event._count?.entries || 0}</p>
-            <p className="text-xs text-slate-400">Wines</p>
+            <p className="text-xs text-slate-400">Entries</p>
           </div>
           <div className="rounded-lg bg-slate-900/50 p-3 text-center">
             <p className="text-lg font-bold text-slate-100">{event._count?.scores || 0}</p>
@@ -115,6 +120,9 @@ export function WineEventCard({ event, tripId, onEdit, onStatusAdvance, isAdvanc
 
         {/* Details */}
         <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-400">
+          <Badge variant="outline" className="text-xs">
+            {typeInfo.emoji} {typeInfo.label}
+          </Badge>
           <span className="flex items-center gap-1">
             <DollarSign className="h-3 w-3" />
             ${event.priceRangeMin} - ${event.priceRangeMax} range

@@ -36,7 +36,7 @@ const tripNavItems = [
   { href: "", icon: Home, label: "Overview" },
   { href: "/itinerary", icon: Map, label: "Itinerary" },
   { href: "/meals", icon: Utensils, label: "Meals" },
-  { href: "/wine", icon: Wine, label: "Wine" },
+  { href: "/wine", icon: Wine, label: "Blind Tasting" },
   { href: "/expenses", icon: DollarSign, label: "Expenses" },
   { href: "/guests", icon: Users, label: "Guests" },
   { href: "/packing", icon: Package, label: "Packing" },

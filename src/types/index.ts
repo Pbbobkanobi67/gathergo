@@ -148,6 +148,9 @@ export interface WineEventWithDetails {
   priceRangeMin: number;
   priceRangeMax: number;
   bottleCount: number;
+  contestType: string;
+  entriesPerPerson: number;
+  instructions: string | null;
   hoodBucksPotSize: number;
   allowCashBets: boolean;
   revealedAt: Date | null;
@@ -164,7 +167,7 @@ export interface WineEventWithDetails {
 
 export interface WineEntryWithSubmitter {
   id: string;
-  bagNumber: number;
+  bagNumber: number | null;
   wineName: string;
   winery: string | null;
   vintage: number | null;
@@ -174,6 +177,7 @@ export interface WineEntryWithSubmitter {
   isRevealed: boolean;
   finalPlace: number | null;
   notes: string | null;
+  submittedByMemberId: string | null;
   submittedBy: TripMemberSummary | null;
 }
 

@@ -22,7 +22,7 @@ export default function WinePage() {
   const [editingEvent, setEditingEvent] = useState<WineEventWithDetails | null>(null);
 
   if (isLoading) {
-    return <LoadingPage message="Loading wine events..." />;
+    return <LoadingPage message="Loading tasting events..." />;
   }
 
   const handleStatusAdvance = async (eventId: string, currentStatus: string) => {
@@ -58,7 +58,7 @@ export default function WinePage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Wine Tasting</h1>
+            <h1 className="text-2xl font-bold text-slate-100">Blind Tasting</h1>
             <p className="text-sm text-slate-400">
               {events?.length || 0} event{events?.length !== 1 ? "s" : ""}
             </p>
@@ -66,7 +66,7 @@ export default function WinePage() {
         </div>
         <Button onClick={() => setFormOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" />
-          New Wine Event
+          New Tasting Event
         </Button>
       </div>
 
@@ -87,14 +87,14 @@ export default function WinePage() {
       ) : (
         <EmptyState
           icon={Wine}
-          title="No wine events"
-          description="Create a blind wine tasting event. Guests bring wine, taste blind, and vote for their favorites!"
-          actionLabel="Create Wine Event"
+          title="No tasting events"
+          description="Create a blind tasting event for wine, chili, BBQ, or anything else. Participants submit entries privately, taste blind, and vote for favorites!"
+          actionLabel="Create Tasting Event"
           onAction={() => setFormOpen(true)}
         />
       )}
 
-      {/* Add/Edit Wine Event Modal */}
+      {/* Add/Edit Event Modal */}
       <WineEventFormModal
         open={formOpen}
         onOpenChange={handleFormClose}
