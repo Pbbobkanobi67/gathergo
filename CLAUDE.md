@@ -7,7 +7,7 @@
 ## Project Details
 
 - **Stack**: Next.js 16, Tailwind v4, Prisma, PostgreSQL (Neon), Clerk auth, Vercel hosting
-- **Deploy command**: `npx vercel --prod`
+- **Deploy method**: `git push` triggers Vercel auto-deploy (CLI `npx vercel --prod` hits sandbox OOM — do not use)
 - **Build command**: `prisma generate && next build`
 - **Dates**: Trip dates are normalized to noon UTC (T12:00:00Z) to prevent timezone display shifts in US timezones
 
