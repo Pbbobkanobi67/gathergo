@@ -287,11 +287,22 @@ interface LeaderboardEntry {
   voterCount: number;
 }
 
+interface VoterProgressEntry {
+  memberId: string;
+  name: string;
+  avatarUrl: string | null;
+  bottlesScored: number;
+  totalBottles: number;
+  complete: boolean;
+}
+
 interface LeaderboardData {
   leaderboard: LeaderboardEntry[];
+  voterProgress: VoterProgressEntry[];
   totalVoters: number;
   totalMembers: number;
   currentUserScored: boolean;
+  myTasteNotes: Record<string, { rating: number; notes?: string; wineType?: string; grapeGuess?: string; priceRangeGuess?: string }> | null;
 }
 
 async function fetchLeaderboard(tripId: string, eventId: string): Promise<LeaderboardData> {

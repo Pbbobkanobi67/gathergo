@@ -47,6 +47,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             memberId: true,
             tasteNotes: true,
             submittedAt: true,
+            member: {
+              select: {
+                id: true,
+                guestName: true,
+                user: { select: { name: true, avatarUrl: true } },
+              },
+            },
           },
         },
       },
@@ -59,8 +66,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Count total members for progress
-    const totalMembers = await prisma.tripMember.count({ where: { tripId } });
+    // Get all trip members for voter progress
+    const allMembers = await prisma.tripMember.findMany({
+      where: { tripId },
+      select: {
+        id: true,
+        guestName: true,
+        user: { select: { name: true, avatarUrl: true } },
+      },
+    });
+
+    const totalBottles = event.entries.length;
 
     // Build leaderboard: avg score per bottle
     const entryScores: Record<string, { total: number; count: number }> = {};
@@ -68,13 +84,40 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       entryScores[entry.id] = { total: 0, count: 0 };
     }
 
+    // Build per-voter progress
+    const voterProgress: { memberId: string; name: string; avatarUrl: string | null; bottlesScored: number; totalBottles: number; complete: boolean }[] = [];
+
     for (const score of event.scores) {
       const notes = score.tasteNotes as Record<string, { rating: number }>;
+      let bottlesScored = 0;
       for (const [entryId, note] of Object.entries(notes)) {
         if (entryScores[entryId] && note.rating > 0) {
           entryScores[entryId].total += note.rating;
           entryScores[entryId].count += 1;
+          bottlesScored++;
         }
+      }
+      voterProgress.push({
+        memberId: score.memberId,
+        name: score.member?.user?.name || score.member?.guestName || "Guest",
+        avatarUrl: score.member?.user?.avatarUrl || null,
+        bottlesScored,
+        totalBottles,
+        complete: bottlesScored >= totalBottles,
+      });
+    }
+
+    // Add members who haven't scored yet
+    for (const m of allMembers) {
+      if (!voterProgress.find((v) => v.memberId === m.id)) {
+        voterProgress.push({
+          memberId: m.id,
+          name: m.user?.name || m.guestName || "Guest",
+          avatarUrl: m.user?.avatarUrl || null,
+          bottlesScored: 0,
+          totalBottles,
+          complete: false,
+        });
       }
     }
 
@@ -92,13 +135,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const currentUserScored = event.scores.some((s) => s.memberId === member.id);
 
+    // Get current user's existing taste notes if they have scored
+    const myScore = event.scores.find((s) => s.memberId === member.id);
+    const myTasteNotes = myScore ? myScore.tasteNotes : null;
+
     return NextResponse.json({
       success: true,
       data: {
         leaderboard,
+        voterProgress,
         totalVoters: event.scores.length,
-        totalMembers,
+        totalMembers: allMembers.length,
         currentUserScored,
+        myTasteNotes,
       },
     });
   } catch (error) {

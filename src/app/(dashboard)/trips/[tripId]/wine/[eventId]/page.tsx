@@ -31,20 +31,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useWineEvent, useUpdateWineEvent } from "@/hooks/useWineEvents";
-import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners } from "@/hooks/useWineEventDetail";
+import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners, useLiveLeaderboard } from "@/hooks/useWineEventDetail";
 import { useMembers } from "@/hooks/useMembers";
 import { useSafeUser } from "@/components/shared/SafeClerkUser";
 import { HOOD_BUCKS, WINE_EVENT_STATUSES, CONTEST_TYPES } from "@/constants";
 import { formatDate } from "@/lib/utils";
 import { WineEventFormModal } from "@/components/wine/WineEventFormModal";
 import { WineEntryFormModal } from "@/components/wine/WineEntryFormModal";
-import { WineScoringModal } from "@/components/wine/WineScoringModal";
+import { WineScoringPanel } from "@/components/wine/WineScoringPanel";
+import { VoterProgressPanel } from "@/components/wine/VoterProgressPanel";
+import { RevealSequence } from "@/components/wine/RevealSequence";
 import { WineEntryCard } from "@/components/wine/WineEntryCard";
 import { WineBetCard } from "@/components/wine/WineBetCard";
 import { ContestStepper } from "@/components/wine/ContestStepper";
 import { HowToPlay } from "@/components/wine/HowToPlay";
 import { BagAssignmentPanel } from "@/components/wine/BagAssignmentPanel";
-import { WinnerConfettiModal } from "@/components/wine/WinnerConfettiModal";
 import { LiveLeaderboard } from "@/components/wine/LiveLeaderboard";
 import { ScoreBreakdownTable } from "@/components/wine/ScoreBreakdownTable";
 import type { WineEntryWithSubmitter } from "@/types";
@@ -61,10 +62,10 @@ export default function WineEventDetailPage() {
   const deleteEntry = useDeleteWineEntry();
   const updateEvent = useUpdateWineEvent();
   const revealWinners = useRevealWinners();
+  const { data: leaderboardData } = useLiveLeaderboard(tripId, eventId, event?.status === "SCORING");
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [entryFormOpen, setEntryFormOpen] = useState(false);
-  const [scoringOpen, setScoringOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WineEntryWithSubmitter | null>(null);
   const [confettiOpen, setConfettiOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -234,16 +235,10 @@ export default function WineEventDetailPage() {
             </Button>
           )}
           {event.status === "SCORING" && assignedEntries.length > 0 && (
-            <>
-              <Button onClick={() => setScoringOpen(true)} className="gap-2">
-                <Star className="h-4 w-4" />
-                Score
-              </Button>
-              <Button onClick={() => setBetOpen(true)} variant="amber" className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Place Bet
-              </Button>
-            </>
+            <Button onClick={() => setBetOpen(true)} variant="amber" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Place Bet
+            </Button>
           )}
         </div>
       </div>
@@ -302,6 +297,21 @@ export default function WineEventDetailPage() {
           eventId={eventId}
           onComplete={() => {}}
         />
+      )}
+
+      {/* Inline Scoring Panel (SCORING phase) */}
+      {event.status === "SCORING" && assignedEntries.length > 0 && (
+        <WineScoringPanel
+          tripId={tripId}
+          eventId={eventId}
+          entries={entries}
+          existingNotes={leaderboardData?.myTasteNotes}
+        />
+      )}
+
+      {/* Voter Progress (SCORING phase) */}
+      {event.status === "SCORING" && leaderboardData?.voterProgress && (
+        <VoterProgressPanel voters={leaderboardData.voterProgress} />
       )}
 
       {/* Live Leaderboard (SCORING phase) */}
@@ -502,6 +512,15 @@ export default function WineEventDetailPage() {
         </Card>
       )}
 
+      {/* Reveal Sequence (plays once when host triggers reveal) */}
+      {confettiOpen && revealResults && (
+        <RevealSequence
+          results={revealResults}
+          contestType={event.contestType}
+          onComplete={() => setConfettiOpen(false)}
+        />
+      )}
+
       {/* Phase Transition Button (admin only) */}
       {isOrganizer && nextStatus && (
         <Button
@@ -545,23 +564,6 @@ export default function WineEventDetailPage() {
         entry={editingEntry}
         contestType={event.contestType}
         entriesRemaining={entriesRemaining}
-      />
-
-      {/* Scoring Modal */}
-      <WineScoringModal
-        open={scoringOpen}
-        onOpenChange={setScoringOpen}
-        tripId={tripId}
-        eventId={eventId}
-        entries={entries}
-      />
-
-      {/* Winner Confetti Modal */}
-      <WinnerConfettiModal
-        open={confettiOpen}
-        onOpenChange={setConfettiOpen}
-        results={revealResults}
-        contestType={event.contestType}
       />
 
       {/* Place Bet Dialog */}
