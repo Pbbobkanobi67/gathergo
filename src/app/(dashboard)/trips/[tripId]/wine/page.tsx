@@ -4,9 +4,8 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Wine } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/shared/LoadingSpinner";
-import { useWineEvents, useUpdateWineEvent } from "@/hooks/useWineEvents";
+import { useWineEvents } from "@/hooks/useWineEvents";
 import { WineEventCard } from "@/components/wine/WineEventCard";
 import { WineEventFormModal } from "@/components/wine/WineEventFormModal";
 import type { WineEventWithDetails } from "@/types";
@@ -15,7 +14,6 @@ export default function WinePage() {
   const params = useParams();
   const tripId = params.tripId as string;
   const { data: events, isLoading } = useWineEvents(tripId);
-  const updateEvent = useUpdateWineEvent();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<WineEventWithDetails | null>(null);
@@ -23,18 +21,6 @@ export default function WinePage() {
   if (isLoading) {
     return <LoadingPage message="Loading tasting events..." />;
   }
-
-  const handleStatusAdvance = async (eventId: string, currentStatus: string) => {
-    const statusOrder = ["SETUP", "OPEN", "SCORING", "REVEAL", "COMPLETE"];
-    const currentIndex = statusOrder.indexOf(currentStatus);
-    if (currentIndex < statusOrder.length - 1) {
-      await updateEvent.mutateAsync({
-        tripId,
-        eventId,
-        data: { status: statusOrder[currentIndex + 1] },
-      });
-    }
-  };
 
   const handleEdit = (event: WineEventWithDetails) => {
     setEditingEvent(event);
@@ -79,8 +65,6 @@ export default function WinePage() {
                 event={event}
                 tripId={tripId}
                 onEdit={handleEdit}
-                onStatusAdvance={handleStatusAdvance}
-                isAdvancing={updateEvent.isPending}
               />
             ))}
           </div>

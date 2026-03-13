@@ -29,7 +29,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useWineEvent, useUpdateWineEvent } from "@/hooks/useWineEvents";
-import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners, useLiveLeaderboard } from "@/hooks/useWineEventDetail";
+import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners, useLiveLeaderboard, useAssignBags } from "@/hooks/useWineEventDetail";
 import { useMembers } from "@/hooks/useMembers";
 import { useSafeUser } from "@/components/shared/SafeClerkUser";
 import { HOOD_BUCKS, WINE_EVENT_STATUSES, CONTEST_TYPES } from "@/constants";
@@ -60,6 +60,7 @@ export default function WineEventDetailPage() {
   const deleteEntry = useDeleteWineEntry();
   const updateEvent = useUpdateWineEvent();
   const revealWinners = useRevealWinners();
+  const assignBagsMutation = useAssignBags();
   const { data: leaderboardData } = useLiveLeaderboard(tripId, eventId, event?.status === "SCORING");
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
@@ -152,7 +153,24 @@ export default function WineEventDetailPage() {
   };
 
   const handleStatusAdvance = async (nextStatus: string) => {
-    if (nextStatus === "REVEAL") {
+    if (nextStatus === "SCORING") {
+      // Auto-assign bag numbers to all unassigned entries (randomized order)
+      const unassigned = entries.filter((e) => e.bagNumber === null);
+      if (unassigned.length > 0) {
+        const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
+        const existingMax = Math.max(0, ...entries.filter((e) => e.bagNumber !== null).map((e) => e.bagNumber!));
+        const assignments = shuffled.map((e, i) => ({
+          entryId: e.id,
+          bagNumber: existingMax + i + 1,
+        }));
+        await assignBagsMutation.mutateAsync({ tripId, eventId, assignments });
+      }
+      await updateEvent.mutateAsync({
+        tripId,
+        eventId,
+        data: { status: nextStatus },
+      });
+    } else if (nextStatus === "REVEAL") {
       try {
         const results = await revealWinners.mutateAsync({ tripId, eventId });
         setRevealResults(results);
@@ -484,25 +502,36 @@ export default function WineEventDetailPage() {
         )}
 
         {/* Phase Transition Button (admin only) */}
-        {isOrganizer && nextStatus && (
-          <button
-            onClick={() => handleStatusAdvance(nextStatus)}
-            disabled={
-              updateEvent.isPending || revealWinners.isPending ||
-              (nextStatus === "SCORING" && entries.length < 2) ||
-              (nextStatus === "REVEAL" && assignedEntries.length < 2)
-            }
-            className={nextStatus === "REVEAL" ? "wine-btn" : "wine-btn-ghost w-full"}
-          >
-            {nextStatus === "REVEAL" ? <Trophy className="h-4 w-4" /> :
-             nextStatus === "COMPLETE" ? <Eye className="h-4 w-4" /> :
-             <ArrowRight className="h-4 w-4" />}
-            {NEXT_STATUS_LABELS[nextStatus]}
-            {nextStatus === "SCORING" && entries.length < 2 && (
-              <span className="text-xs opacity-75">(need 2+ entries)</span>
-            )}
-          </button>
-        )}
+        {isOrganizer && nextStatus && (() => {
+          const submittedScores = scores.filter((s) => s.submittedAt);
+          const noScoresForReveal = nextStatus === "REVEAL" && submittedScores.length < 1;
+          return (
+            <div className="space-y-2">
+              <button
+                onClick={() => handleStatusAdvance(nextStatus)}
+                disabled={
+                  updateEvent.isPending || revealWinners.isPending || assignBagsMutation.isPending ||
+                  (nextStatus === "SCORING" && entries.length < 2) ||
+                  noScoresForReveal
+                }
+                className={nextStatus === "REVEAL" ? "wine-btn" : "wine-btn-ghost w-full"}
+              >
+                {nextStatus === "REVEAL" ? <Trophy className="h-4 w-4" /> :
+                 nextStatus === "COMPLETE" ? <Eye className="h-4 w-4" /> :
+                 <ArrowRight className="h-4 w-4" />}
+                {NEXT_STATUS_LABELS[nextStatus]}
+                {nextStatus === "SCORING" && entries.length < 2 && (
+                  <span className="text-xs opacity-75">(need 2+ entries)</span>
+                )}
+              </button>
+              {noScoresForReveal && (
+                <p className="text-center text-xs text-amber-400/80">
+                  At least 1 person must score before revealing
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Modals */}

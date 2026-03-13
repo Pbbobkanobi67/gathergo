@@ -3,10 +3,8 @@
 import Link from "next/link";
 import {
   DollarSign,
-  Trophy,
-  Eye,
-  Pencil,
   ArrowRight,
+  Pencil,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { WINE_EVENT_STATUSES, HOOD_BUCKS, CONTEST_TYPES } from "@/constants";
@@ -16,8 +14,6 @@ interface WineEventCardProps {
   event: WineEventWithDetails;
   tripId: string;
   onEdit: (event: WineEventWithDetails) => void;
-  onStatusAdvance: (eventId: string, currentStatus: string) => void;
-  isAdvancing?: boolean;
 }
 
 const STATUS_DESCRIPTIONS: Record<string, string> = {
@@ -28,13 +24,6 @@ const STATUS_DESCRIPTIONS: Record<string, string> = {
   COMPLETE: "Event complete! Results and Hood Bucks have been distributed.",
 };
 
-const NEXT_STATUS_LABELS: Record<string, string> = {
-  SETUP: "Open for Entries",
-  OPEN: "Start Scoring",
-  SCORING: "Reveal Winners",
-  REVEAL: "Complete Event",
-};
-
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   SETUP: "bg-[#C9A040]/20 text-[#C9A040] border border-[#C9A040]/30",
   OPEN: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
@@ -43,11 +32,19 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   COMPLETE: "bg-[#C9A040]/20 text-[#C9A040] border border-[#C9A040]/30",
 };
 
-export function WineEventCard({ event, tripId, onEdit, onStatusAdvance, isAdvancing }: WineEventCardProps) {
+const LINK_LABELS: Record<string, string> = {
+  SETUP: "Open Event",
+  OPEN: "View Event",
+  SCORING: "Score Now",
+  REVEAL: "View Reveal",
+  COMPLETE: "View Results",
+};
+
+export function WineEventCard({ event, tripId, onEdit }: WineEventCardProps) {
   const statusInfo = WINE_EVENT_STATUSES.find((s) => s.value === event.status) || WINE_EVENT_STATUSES[0];
-  const nextLabel = NEXT_STATUS_LABELS[event.status];
   const typeInfo = CONTEST_TYPES.find((t) => t.value === event.contestType) || CONTEST_TYPES[0];
   const badgeClass = STATUS_BADGE_CLASSES[event.status] || STATUS_BADGE_CLASSES.SETUP;
+  const linkLabel = LINK_LABELS[event.status] || "View Event";
 
   return (
     <div className="wine-card space-y-5 transition-all hover:border-[rgba(201,160,64,0.35)]">
@@ -119,29 +116,13 @@ export function WineEventCard({ event, tripId, onEdit, onStatusAdvance, isAdvanc
         {STATUS_DESCRIPTIONS[event.status]}
       </p>
 
-      {/* Action Button */}
-      {nextLabel && (
-        <button
-          onClick={(e) => { e.preventDefault(); onStatusAdvance(event.id, event.status); }}
-          disabled={isAdvancing}
-          className="wine-btn"
-        >
-          {event.status === "REVEAL" ? <Eye className="h-4 w-4" /> :
-           event.status === "SCORING" ? <Trophy className="h-4 w-4" /> :
-           <ArrowRight className="h-4 w-4" />}
-          {nextLabel}
+      {/* Link to detail page */}
+      <Link href={`/trips/${tripId}/wine/${event.id}`} className="block">
+        <button className="wine-btn">
+          <ArrowRight className="h-4 w-4" />
+          {linkLabel}
         </button>
-      )}
-
-      {/* Completed: View Results link */}
-      {event.status === "COMPLETE" && (
-        <Link href={`/trips/${tripId}/wine/${event.id}`} className="block">
-          <button className="wine-btn-ghost w-full">
-            <Trophy className="h-4 w-4" />
-            View Results
-          </button>
-        </Link>
-      )}
+      </Link>
     </div>
   );
 }
