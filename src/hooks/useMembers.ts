@@ -8,6 +8,7 @@ const API_BASE = "/api/trips";
 interface MemberWithUser extends TripMember {
   user: {
     id: string;
+    clerkId: string;
     name: string;
     email: string;
     avatarUrl: string | null;

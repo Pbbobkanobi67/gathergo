@@ -26,6 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         user: {
           select: {
             id: true,
+            clerkId: true,
             name: true,
             email: true,
             avatarUrl: true,

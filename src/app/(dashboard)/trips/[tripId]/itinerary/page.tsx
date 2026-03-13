@@ -66,7 +66,7 @@ export default function ItineraryPage() {
   // Find current user's member ID
   const currentMemberId = useMemo(() => {
     if (!clerkUser || !membersData) return null;
-    const found = membersData.find((m: { userId: string | null }) => m.userId === clerkUser.id);
+    const found = membersData.find((m) => m.user?.clerkId === clerkUser.id);
     return found?.id || null;
   }, [clerkUser, membersData]);
 

@@ -73,7 +73,7 @@ export default function MealsPage() {
   // Find current user's member ID
   const currentMemberId = useMemo(() => {
     if (!clerkUser || !members) return null;
-    const found = members.find((m) => m.userId === clerkUser.id);
+    const found = members.find((m) => m.user?.clerkId === clerkUser.id);
     return found?.id || null;
   }, [clerkUser, members]);
 
