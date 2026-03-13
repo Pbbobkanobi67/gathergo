@@ -153,6 +153,8 @@ export interface WineEventWithDetails {
   instructions: string | null;
   hoodBucksPotSize: number;
   allowCashBets: boolean;
+  bestPalateMemberId: string | null;
+  bestPalateScore: number | null;
   revealedAt: Date | null;
   createdAt: Date;
   entries: WineEntryWithSubmitter[];
@@ -176,6 +178,8 @@ export interface WineEntryWithSubmitter {
   imageUrl: string | null;
   isRevealed: boolean;
   finalPlace: number | null;
+  avgScore: number | null;
+  totalVoters: number | null;
   notes: string | null;
   submittedByMemberId: string | null;
   submittedBy: TripMemberSummary | null;
@@ -198,6 +202,9 @@ export interface WineRankings {
 export interface WineTasteNote {
   rating: number;
   notes: string;
+  wineType?: string;
+  grapeGuess?: string;
+  priceRangeGuess?: string;
 }
 
 export interface WineBetSummary {
@@ -317,12 +324,36 @@ export interface MealAssignment {
 
 // Wine scoring form
 export interface WineScoringForm {
-  rankings: {
-    first: string;
-    second: string;
-    third: string;
-  };
-  tasteNotes: Record<string, { rating: number; notes: string }>;
+  tasteNotes: Record<string, { rating: number; notes: string; wineType?: string; grapeGuess?: string; priceRangeGuess?: string }>;
+}
+
+// Best Palate result
+export interface BestPalateResult {
+  memberId: string;
+  memberName: string;
+  avatarUrl: string | null;
+  spearmanDistance: number;
+}
+
+// Hood Bucks award summary
+export interface HoodBucksAwardSummary {
+  place: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+}
+
+// Score breakdown for reveal table
+export interface ScoreBreakdownEntry {
+  rank: number;
+  entryId: string;
+  bagNumber: number | null;
+  wineName: string;
+  winery: string | null;
+  avgScore: number;
+  totalVoters: number;
+  submitterName: string;
+  submitterAvatarUrl: string | null;
 }
 
 // Wine bet form

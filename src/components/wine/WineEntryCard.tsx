@@ -69,6 +69,9 @@ export function WineEntryCard({ entry, isBlind, showDetails, canEdit, isMyEntry,
               {entry.vintage && <span>{entry.vintage}</span>}
               {entry.varietal && <span>{entry.varietal}</span>}
               {entry.price > 0 && <span className="text-green-400">${entry.price.toFixed(2)}</span>}
+              {entry.avgScore != null && (
+                <span className="text-amber-400 font-medium">Avg: {entry.avgScore.toFixed(1)}/10</span>
+              )}
             </div>
           )}
           {entry.notes && showDetails && (

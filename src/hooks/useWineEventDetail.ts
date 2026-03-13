@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const API_BASE = "/api/trips";
 
@@ -37,8 +37,7 @@ async function submitEntry(input: SubmitEntryInput) {
 interface SubmitScoreInput {
   tripId: string;
   eventId: string;
-  rankings: { first: string; second: string; third: string };
-  tasteNotes: Record<string, { rating: number; notes?: string }>;
+  tasteNotes: Record<string, { rating: number; notes?: string; wineType?: string; grapeGuess?: string; priceRangeGuess?: string }>;
 }
 
 async function submitScore(input: SubmitScoreInput) {
@@ -276,5 +275,38 @@ export function useRevealWinners() {
       queryClient.invalidateQueries({ queryKey: ["wineEvents", variables.tripId] });
       queryClient.invalidateQueries({ queryKey: ["hoodBucks"] });
     },
+  });
+}
+
+// --- Live Leaderboard ---
+
+interface LeaderboardEntry {
+  entryId: string;
+  bagNumber: number | null;
+  avgScore: number;
+  voterCount: number;
+}
+
+interface LeaderboardData {
+  leaderboard: LeaderboardEntry[];
+  totalVoters: number;
+  totalMembers: number;
+  currentUserScored: boolean;
+}
+
+async function fetchLeaderboard(tripId: string, eventId: string): Promise<LeaderboardData> {
+  const res = await fetch(`${API_BASE}/${tripId}/wine-events/${eventId}/scores`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch leaderboard");
+  }
+  return (await res.json()).data;
+}
+
+export function useLiveLeaderboard(tripId: string, eventId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["liveLeaderboard", tripId, eventId],
+    queryFn: () => fetchLeaderboard(tripId, eventId),
+    refetchInterval: enabled ? 10000 : false,
+    enabled,
   });
 }

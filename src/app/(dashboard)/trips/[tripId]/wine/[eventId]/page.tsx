@@ -45,6 +45,8 @@ import { ContestStepper } from "@/components/wine/ContestStepper";
 import { HowToPlay } from "@/components/wine/HowToPlay";
 import { BagAssignmentPanel } from "@/components/wine/BagAssignmentPanel";
 import { WinnerConfettiModal } from "@/components/wine/WinnerConfettiModal";
+import { LiveLeaderboard } from "@/components/wine/LiveLeaderboard";
+import { ScoreBreakdownTable } from "@/components/wine/ScoreBreakdownTable";
 import type { WineEntryWithSubmitter } from "@/types";
 
 export default function WineEventDetailPage() {
@@ -263,7 +265,7 @@ export default function WineEventDetailPage() {
           <p className="text-xs text-slate-400">Entries</p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
-          <p className="text-2xl font-bold text-teal-400">{scores.length}</p>
+          <p className="text-2xl font-bold text-teal-400">{scores.length}{membersData ? `/${membersData.length}` : ""}</p>
           <p className="text-xs text-slate-400">Scored</p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
@@ -300,6 +302,11 @@ export default function WineEventDetailPage() {
           eventId={eventId}
           onComplete={() => {}}
         />
+      )}
+
+      {/* Live Leaderboard (SCORING phase) */}
+      {event.status === "SCORING" && assignedEntries.length > 0 && (
+        <LiveLeaderboard tripId={tripId} eventId={eventId} />
       )}
 
       {/* My Entries Section (OPEN phase) */}
@@ -416,6 +423,30 @@ export default function WineEventDetailPage() {
                   onDelete={handleDeleteEntry}
                 />
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Score Breakdown Table (REVEAL/COMPLETE) */}
+      {isRevealed && entries.length > 0 && (
+        <ScoreBreakdownTable entries={entries} />
+      )}
+
+      {/* Best Palate Card (REVEAL/COMPLETE) */}
+      {isRevealed && event.bestPalateMemberId && (
+        <Card className="border-purple-500/30 bg-purple-500/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/20">
+                <Trophy className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-purple-300">Best Palate Award</p>
+                <p className="text-xs text-slate-400">
+                  Closest to group consensus (distance: {event.bestPalateScore?.toFixed(1) ?? "?"})
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

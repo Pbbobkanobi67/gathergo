@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
+import { awardTastingPot } from "@/lib/hood-bucks";
+import { TASTING_POT_SPLIT } from "@/constants";
 
 interface RouteParams {
   params: Promise<{ tripId: string; eventId: string }>;
@@ -39,7 +41,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             },
           },
         },
-        scores: true,
+        scores: {
+          include: {
+            member: {
+              include: {
+                user: { select: { id: true, name: true, avatarUrl: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -57,61 +67,141 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Tally scores: 1st=3pts, 2nd=2pts, 3rd=1pt
-    const pointsMap: Record<string, number> = {};
+    // =========================================================
+    // 1. Compute avg score per bottle from all voters' tasteNotes
+    // =========================================================
     const ratingsMap: Record<string, number[]> = {};
+    for (const entry of event.entries) {
+      ratingsMap[entry.id] = [];
+    }
 
     for (const score of event.scores) {
-      const rankings = score.rankings as { first?: string; second?: string; third?: string };
-      if (rankings.first) pointsMap[rankings.first] = (pointsMap[rankings.first] || 0) + 3;
-      if (rankings.second) pointsMap[rankings.second] = (pointsMap[rankings.second] || 0) + 2;
-      if (rankings.third) pointsMap[rankings.third] = (pointsMap[rankings.third] || 0) + 1;
-
       const tasteNotes = score.tasteNotes as Record<string, { rating: number }>;
       for (const [entryId, note] of Object.entries(tasteNotes)) {
-        if (!ratingsMap[entryId]) ratingsMap[entryId] = [];
-        ratingsMap[entryId].push(note.rating);
+        if (ratingsMap[entryId] && note.rating > 0) {
+          ratingsMap[entryId].push(note.rating);
+        }
       }
     }
 
-    // Sort entries by points (desc), tiebreaker: avg rating (desc)
-    const sortedEntries = event.entries
+    // 2. Sort by avgScore desc -> assign finalPlace 1/2/3
+    const scoredEntries = event.entries
       .filter((e) => e.bagNumber !== null)
       .map((e) => {
-        const points = pointsMap[e.id] || 0;
         const ratings = ratingsMap[e.id] || [];
-        const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
-        return { ...e, points, avgRating };
+        const avgScore = ratings.length > 0
+          ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+          : 0;
+        return { ...e, avgScore, totalVoters: ratings.length };
       })
-      .sort((a, b) => b.points - a.points || b.avgRating - a.avgRating);
+      .sort((a, b) => b.avgScore - a.avgScore);
 
-    // Assign places (1, 2, 3)
-    const updates = [];
-    for (let i = 0; i < sortedEntries.length; i++) {
-      const place = i < 3 ? i + 1 : null;
-      updates.push(
-        prisma.wineEntry.update({
-          where: { id: sortedEntries[i].id },
-          data: { isRevealed: true, finalPlace: place },
-        })
-      );
+    // =========================================================
+    // 3. Compute Best Palate: Spearman footrule distance
+    // =========================================================
+    // Group ranking = sorted by avgScore desc -> rank 1,2,3...
+    const groupRanking: Record<string, number> = {};
+    scoredEntries.forEach((e, i) => {
+      groupRanking[e.id] = i + 1;
+    });
+
+    let bestPalateMemberId: string | null = null;
+    let bestPalateScore: number | null = null;
+    let bestPalateName = "";
+    let bestPalateAvatarUrl: string | null = null;
+
+    if (event.scores.length > 0 && scoredEntries.length >= 3) {
+      for (const score of event.scores) {
+        const tasteNotes = score.tasteNotes as Record<string, { rating: number }>;
+
+        // Derive voter's personal ranking from their scores
+        const voterScores = scoredEntries
+          .filter((e) => tasteNotes[e.id]?.rating > 0)
+          .map((e) => ({ entryId: e.id, rating: tasteNotes[e.id].rating }))
+          .sort((a, b) => b.rating - a.rating);
+
+        // Compute Spearman footrule distance: sum(|voter_rank - group_rank|)
+        let distance = 0;
+        voterScores.forEach((vs, i) => {
+          const voterRank = i + 1;
+          const groupRank = groupRanking[vs.entryId] || voterRank;
+          distance += Math.abs(voterRank - groupRank);
+        });
+
+        if (bestPalateScore === null || distance < bestPalateScore) {
+          bestPalateScore = distance;
+          bestPalateMemberId = score.memberId;
+          bestPalateName = score.member?.user?.name || score.member?.guestName || "Guest";
+          bestPalateAvatarUrl = score.member?.user?.avatarUrl || null;
+        }
+      }
     }
 
-    // Also reveal entries without bag numbers
-    for (const e of event.entries.filter((e) => e.bagNumber === null)) {
-      updates.push(
-        prisma.wineEntry.update({
-          where: { id: e.id },
-          data: { isRevealed: true },
-        })
-      );
+    // =========================================================
+    // 4. Distribute Hood Bucks pot
+    // =========================================================
+    const potSize = event.hoodBucksPotSize;
+    const hoodBucksAwards: { place: string; memberId: string; memberName: string; amount: number }[] = [];
+
+    if (potSize > 0) {
+      const places = [
+        { idx: 0, label: "1st Place", split: TASTING_POT_SPLIT.FIRST },
+        { idx: 1, label: "2nd Place", split: TASTING_POT_SPLIT.SECOND },
+        { idx: 2, label: "3rd Place", split: TASTING_POT_SPLIT.THIRD },
+      ];
+
+      for (const p of places) {
+        const entry = scoredEntries[p.idx];
+        if (entry?.submittedByMemberId) {
+          const amount = Math.floor(potSize * p.split);
+          if (amount > 0) {
+            const memberName = entry.submittedBy?.user?.name || entry.submittedBy?.guestName || "Guest";
+            await awardTastingPot(
+              entry.submittedByMemberId,
+              tripId,
+              amount,
+              `Tasting ${p.label} - ${entry.wineName}`,
+              entry.submittedBy?.user?.id
+            );
+            hoodBucksAwards.push({
+              place: p.label,
+              memberId: entry.submittedByMemberId,
+              memberName,
+              amount,
+            });
+          }
+        }
+      }
+
+      // Best Palate award
+      if (bestPalateMemberId) {
+        const amount = Math.floor(potSize * TASTING_POT_SPLIT.BEST_PALATE);
+        if (amount > 0) {
+          const bpScore = event.scores.find((s) => s.memberId === bestPalateMemberId);
+          await awardTastingPot(
+            bestPalateMemberId,
+            tripId,
+            amount,
+            "Best Palate Award",
+            bpScore?.userId || undefined
+          );
+          hoodBucksAwards.push({
+            place: "Best Palate",
+            memberId: bestPalateMemberId,
+            memberName: bestPalateName,
+            amount,
+          });
+        }
+      }
     }
 
-    // Resolve bets
+    // =========================================================
+    // 5. Resolve bets (unchanged logic)
+    // =========================================================
     const bets = await prisma.wineBet.findMany({ where: { wineEventId: eventId } });
-    const first = sortedEntries[0]?.id;
-    const second = sortedEntries[1]?.id;
-    const third = sortedEntries[2]?.id;
+    const first = scoredEntries[0]?.id;
+    const second = scoredEntries[1]?.id;
+    const third = scoredEntries[2]?.id;
 
     const betUpdates = [];
     for (const bet of bets) {
@@ -131,7 +221,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         })
       );
 
-      // Credit/debit hood bucks
       if (isCorrect && hoodBucksWon > 0) {
         betUpdates.push(
           prisma.tripMember.update({
@@ -155,47 +244,82 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Update event status
-    updates.push(
+    // =========================================================
+    // 6. Save all updates in a transaction
+    // =========================================================
+    const entryUpdates = [];
+    for (let i = 0; i < scoredEntries.length; i++) {
+      const place = i < 3 ? i + 1 : null;
+      entryUpdates.push(
+        prisma.wineEntry.update({
+          where: { id: scoredEntries[i].id },
+          data: {
+            isRevealed: true,
+            finalPlace: place,
+            avgScore: scoredEntries[i].avgScore,
+            totalVoters: scoredEntries[i].totalVoters,
+          },
+        })
+      );
+    }
+
+    // Also reveal entries without bag numbers
+    for (const e of event.entries.filter((e) => e.bagNumber === null)) {
+      entryUpdates.push(
+        prisma.wineEntry.update({
+          where: { id: e.id },
+          data: { isRevealed: true },
+        })
+      );
+    }
+
+    // Update event status + best palate
+    entryUpdates.push(
       prisma.wineEvent.update({
         where: { id: eventId },
-        data: { status: "REVEAL", revealedAt: new Date() },
+        data: {
+          status: "REVEAL",
+          revealedAt: new Date(),
+          bestPalateMemberId,
+          bestPalateScore,
+        },
       })
     );
 
-    await prisma.$transaction([...updates, ...betUpdates]);
+    await prisma.$transaction([...entryUpdates, ...betUpdates]);
 
-    // Build results
+    // =========================================================
+    // 7. Build enhanced results
+    // =========================================================
+    const buildPlaceResult = (idx: number) => {
+      const entry = scoredEntries[idx];
+      if (!entry) return null;
+      return {
+        entryId: entry.id,
+        bagNumber: entry.bagNumber,
+        wineName: entry.wineName,
+        winery: entry.winery,
+        avgScore: entry.avgScore,
+        totalVoters: entry.totalVoters,
+        submittedBy: entry.submittedBy,
+      };
+    };
+
     const results = {
-      winner: sortedEntries[0] ? {
-        entryId: sortedEntries[0].id,
-        bagNumber: sortedEntries[0].bagNumber,
-        wineName: sortedEntries[0].wineName,
-        winery: sortedEntries[0].winery,
-        points: sortedEntries[0].points,
-        avgRating: sortedEntries[0].avgRating,
-        submittedBy: sortedEntries[0].submittedBy,
-      } : null,
-      second: sortedEntries[1] ? {
-        entryId: sortedEntries[1].id,
-        bagNumber: sortedEntries[1].bagNumber,
-        wineName: sortedEntries[1].wineName,
-        winery: sortedEntries[1].winery,
-        points: sortedEntries[1].points,
-        avgRating: sortedEntries[1].avgRating,
-        submittedBy: sortedEntries[1].submittedBy,
-      } : null,
-      third: sortedEntries[2] ? {
-        entryId: sortedEntries[2].id,
-        bagNumber: sortedEntries[2].bagNumber,
-        wineName: sortedEntries[2].wineName,
-        winery: sortedEntries[2].winery,
-        points: sortedEntries[2].points,
-        avgRating: sortedEntries[2].avgRating,
-        submittedBy: sortedEntries[2].submittedBy,
-      } : null,
+      winner: buildPlaceResult(0),
+      second: buildPlaceResult(1),
+      third: buildPlaceResult(2),
       totalScores: event.scores.length,
-      totalEntries: sortedEntries.length,
+      totalEntries: scoredEntries.length,
+      bestPalate: bestPalateMemberId
+        ? {
+            memberId: bestPalateMemberId,
+            memberName: bestPalateName,
+            avatarUrl: bestPalateAvatarUrl,
+            spearmanDistance: bestPalateScore ?? 0,
+          }
+        : null,
+      hoodBucksAwards,
     };
 
     return NextResponse.json({ success: true, data: results });

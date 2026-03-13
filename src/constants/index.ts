@@ -228,14 +228,45 @@ export const COLORS = {
   purple: "#7C3AED",
 } as const;
 
-// Wine rating labels
-export const WINE_RATINGS = [
-  { value: 1, label: "Poor", emoji: "😕" },
-  { value: 2, label: "Fair", emoji: "😐" },
-  { value: 3, label: "Good", emoji: "🙂" },
-  { value: 4, label: "Very Good", emoji: "😊" },
-  { value: 5, label: "Excellent", emoji: "🤩" },
+// Wine rating scale (1-10, half-point increments)
+export const WINE_SCORE_MIN = 1;
+export const WINE_SCORE_MAX = 10;
+export const WINE_SCORE_STEP = 0.5;
+
+export function getScoreLabel(score: number): string {
+  if (score <= 2) return "Poor";
+  if (score <= 3.5) return "Below Average";
+  if (score <= 5) return "Average";
+  if (score <= 6.5) return "Good";
+  if (score <= 8) return "Very Good";
+  if (score <= 9) return "Excellent";
+  return "Outstanding";
+}
+
+// Wine types for guessing
+export const WINE_TYPES = [
+  { value: "Red", label: "Red" },
+  { value: "White", label: "White" },
+  { value: "Rose", label: "Rose" },
+  { value: "Sparkling", label: "Sparkling" },
 ] as const;
+
+// Price ranges for guessing
+export const PRICE_RANGES = [
+  { value: "under10", label: "Under $10" },
+  { value: "10-20", label: "$10-20" },
+  { value: "20-30", label: "$20-30" },
+  { value: "30-50", label: "$30-50" },
+  { value: "50+", label: "$50+" },
+] as const;
+
+// Tasting pot split percentages
+export const TASTING_POT_SPLIT = {
+  FIRST: 0.35,
+  SECOND: 0.20,
+  THIRD: 0.15,
+  BEST_PALATE: 0.30,
+} as const;
 
 // Default notification preferences
 export const DEFAULT_NOTIFICATION_PREFS = {

@@ -203,10 +203,13 @@ export const wineScoreCreateSchema = z.object({
     first: z.string().cuid(),
     second: z.string().cuid(),
     third: z.string().cuid(),
-  }),
+  }).optional(),
   tasteNotes: z.record(z.string(), z.object({
-    rating: z.number().int().min(1).max(5),
+    rating: z.number().min(1).max(10).multipleOf(0.5),
     notes: z.string().max(500).optional(),
+    wineType: z.string().optional(),
+    grapeGuess: z.string().max(100).optional(),
+    priceRangeGuess: z.string().optional(),
   })),
 });
 

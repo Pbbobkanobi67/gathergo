@@ -324,6 +324,32 @@ export function formatHoodBucks(amount: number): string {
   return new Intl.NumberFormat("en-US").format(amount);
 }
 
+// Award tasting pot winnings to a member
+export async function awardTastingPot(
+  memberId: string,
+  tripId: string,
+  amount: number,
+  description: string,
+  userId?: string
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.hoodBucksTransaction.create({
+      data: {
+        memberId,
+        tripId,
+        userId,
+        amount,
+        type: HoodBucksTransactionType.TASTING_WINNER,
+        description,
+      },
+    }),
+    prisma.tripMember.update({
+      where: { id: memberId },
+      data: { hoodBucksBalance: { increment: amount } },
+    }),
+  ]);
+}
+
 // Get transaction type display name
 export function getTransactionTypeLabel(type: HoodBucksTransactionType): string {
   const labels: Record<HoodBucksTransactionType, string> = {
@@ -334,6 +360,7 @@ export function getTransactionTypeLabel(type: HoodBucksTransactionType): string 
     BONUS: "Bonus",
     ADMIN_GRANT: "Admin Grant",
     TRIP_AWARD: "Trip Award",
+    TASTING_WINNER: "Tasting Winner",
   };
   return labels[type];
 }
@@ -348,6 +375,7 @@ export function getTransactionTypeColor(type: HoodBucksTransactionType): string 
     BONUS: "text-purple-500",
     ADMIN_GRANT: "text-blue-500",
     TRIP_AWARD: "text-amber-500",
+    TASTING_WINNER: "text-amber-500",
   };
   return colors[type];
 }

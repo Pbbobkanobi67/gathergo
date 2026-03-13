@@ -14,8 +14,8 @@ interface HowToPlayProps {
 const GENERIC_STEPS = [
   { phase: "Submit", desc: "Each person privately submits their entries. Nobody else can see what you brought." },
   { phase: "Bag Up", desc: "The host covers/bags all entries and assigns bag numbers so they're anonymous." },
-  { phase: "Taste", desc: "Everyone tastes each bag blind and rates them 1-5 stars, then picks their top 3." },
-  { phase: "Reveal", desc: "The host reveals results - confetti, winner, and all entries unmasked!" },
+  { phase: "Taste", desc: "Everyone tastes each bag blind and scores 1-10 (half-points). Guess wine type, grape, and price for fun!" },
+  { phase: "Reveal", desc: "Winners by average score, Best Palate award for closest-to-consensus voter, plus Hood Bucks prizes!" },
 ];
 
 export function HowToPlay({ contestType, customInstructions, status }: HowToPlayProps) {

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Trophy } from "lucide-react";
+import { Trophy, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,15 +12,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/ui/avatar";
-import { CONTEST_TYPES } from "@/constants";
+import { CONTEST_TYPES, HOOD_BUCKS } from "@/constants";
+import type { BestPalateResult, HoodBucksAwardSummary } from "@/types";
 
 interface PlaceResult {
   entryId: string;
   bagNumber: number | null;
   wineName: string;
   winery: string | null;
-  points: number;
-  avgRating: number;
+  avgScore: number;
+  totalVoters: number;
   submittedBy: {
     user?: { id: string; name: string; avatarUrl: string | null } | null;
     guestName?: string | null;
@@ -33,6 +34,8 @@ interface RevealResults {
   third: PlaceResult | null;
   totalScores: number;
   totalEntries: number;
+  bestPalate: BestPalateResult | null;
+  hoodBucksAwards: HoodBucksAwardSummary[];
 }
 
 interface WinnerConfettiModalProps {
@@ -64,7 +67,9 @@ function PodiumEntry({ result, place, height }: { result: PlaceResult | null; pl
         <p className="text-sm font-bold text-slate-100 truncate">{result.wineName}</p>
         {result.winery && <p className="text-xs text-slate-400 truncate">{result.winery}</p>}
         <p className="text-xs text-slate-300 mt-1">{name}</p>
-        <p className="text-xs text-amber-400 mt-1">{result.points} pts</p>
+        <p className="text-xs text-amber-400 mt-1">
+          Avg: {result.avgScore.toFixed(1)}/10
+        </p>
       </div>
     </div>
   );
@@ -75,7 +80,6 @@ export function WinnerConfettiModal({ open, onOpenChange, results, contestType }
 
   useEffect(() => {
     if (open && results?.winner) {
-      // Fire confetti
       const duration = 3000;
       const end = Date.now() + duration;
 
@@ -127,7 +131,7 @@ export function WinnerConfettiModal({ open, onOpenChange, results, contestType }
               )}
               <p className="text-sm text-slate-300 mt-1">by {winnerName}</p>
               <p className="text-xs text-amber-400 mt-1">
-                {results.winner.points} pts | Avg: {results.winner.avgRating.toFixed(1)} stars
+                Avg Score: {results.winner.avgScore.toFixed(1)}/10 ({results.winner.totalVoters} voters)
               </p>
             </div>
           )}
@@ -138,6 +142,40 @@ export function WinnerConfettiModal({ open, onOpenChange, results, contestType }
             <PodiumEntry result={results.winner} place={1} height="min-h-[150px]" />
             <PodiumEntry result={results.third} place={3} height="min-h-[100px]" />
           </div>
+
+          {/* Best Palate */}
+          {results.bestPalate && (
+            <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="h-4 w-4 text-purple-400" />
+                <span className="text-sm font-semibold text-purple-300">Best Palate Award</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <UserAvatar name={results.bestPalate.memberName} src={results.bestPalate.avatarUrl} size="sm" />
+                <span className="text-sm text-slate-200">{results.bestPalate.memberName}</span>
+              </div>
+              <p className="text-[10px] text-purple-400/70 mt-1">
+                Closest match to the group consensus
+              </p>
+            </div>
+          )}
+
+          {/* Hood Bucks Awards */}
+          {results.hoodBucksAwards && results.hoodBucksAwards.length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-xs font-semibold text-amber-300 mb-2">
+                {HOOD_BUCKS.CURRENCY_ICON} Hood Bucks Awarded
+              </p>
+              <div className="space-y-1">
+                {results.hoodBucksAwards.map((award, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span className="text-slate-300">{award.place}: {award.memberName}</span>
+                    <span className="font-bold text-amber-400">+{award.amount} {HOOD_BUCKS.CURRENCY_SYMBOL}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="text-center text-xs text-slate-500">
             {results.totalScores} scores across {results.totalEntries} entries

@@ -532,6 +532,10 @@ model WineEvent {
   hoodBucksPotSize Int            @default(500)
   allowCashBets   Boolean         @default(true)
 
+  // Best Palate award
+  bestPalateMemberId String?      // FK to TripMember who had the best palate
+  bestPalateScore    Float?       // Spearman distance (lower = better)
+
   revealedAt      DateTime?
   createdAt       DateTime        @default(now())
 
@@ -564,6 +568,8 @@ model WineEntry {
 
   isRevealed          Boolean     @default(false)
   finalPlace          Int?        // 1, 2, 3, or null
+  avgScore            Float?      // Computed at reveal: average of all voters' ratings
+  totalVoters         Int?        // Computed at reveal: number of voters who scored this entry
   notes               String?
   createdAt           DateTime    @default(now())
 
@@ -811,6 +817,7 @@ enum HoodBucksTransactionType {
   BONUS
   ADMIN_GRANT
   TRIP_AWARD
+  TASTING_WINNER
 }
 
 model HoodBucksTransaction {
