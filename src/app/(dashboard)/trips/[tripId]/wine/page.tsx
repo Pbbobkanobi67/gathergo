@@ -6,7 +6,6 @@ import Link from "next/link";
 import { ArrowLeft, Plus, Wine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/shared/LoadingSpinner";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { useWineEvents, useUpdateWineEvent } from "@/hooks/useWineEvents";
 import { WineEventCard } from "@/components/wine/WineEventCard";
 import { WineEventFormModal } from "@/components/wine/WineEventFormModal";
@@ -48,51 +47,57 @@ export default function WinePage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href={`/trips/${tripId}`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-100">Blind Tasting</h1>
-            <p className="text-sm text-slate-400">
-              {events?.length || 0} event{events?.length !== 1 ? "s" : ""}
-            </p>
+    <div className="wine-page -mx-4 -mt-6 -mb-20 px-4 pt-6 pb-20 lg:-mx-6 lg:px-6 lg:-mb-6 lg:pb-6 rounded-t-2xl">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Link href={`/trips/${tripId}`}>
+              <button className="p-2 rounded-lg text-[#A08060] hover:text-[#C9A040] transition-colors">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            </Link>
+            <div>
+              <h1 className="font-wine text-3xl font-bold text-[#C9A040]">Blind Tasting</h1>
+              <p className="text-sm text-[#A08060]">
+                {events?.length || 0} event{events?.length !== 1 ? "s" : ""}
+              </p>
+            </div>
           </div>
+          <button onClick={() => setFormOpen(true)} className="wine-btn wine-btn-sm">
+            <Plus className="h-4 w-4" />
+            New Tasting Event
+          </button>
         </div>
-        <Button onClick={() => setFormOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Tasting Event
-        </Button>
-      </div>
 
-      {/* Events */}
-      {events && events.length > 0 ? (
-        <div className="space-y-4">
-          {events.map((event) => (
-            <WineEventCard
-              key={event.id}
-              event={event}
-              tripId={tripId}
-              onEdit={handleEdit}
-              onStatusAdvance={handleStatusAdvance}
-              isAdvancing={updateEvent.isPending}
-            />
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={Wine}
-          title="No tasting events"
-          description="Create a blind tasting event for wine, chili, BBQ, or anything else. Participants submit entries privately, taste blind, and vote for favorites!"
-          actionLabel="Create Tasting Event"
-          onAction={() => setFormOpen(true)}
-        />
-      )}
+        {/* Events */}
+        {events && events.length > 0 ? (
+          <div className="space-y-4">
+            {events.map((event) => (
+              <WineEventCard
+                key={event.id}
+                event={event}
+                tripId={tripId}
+                onEdit={handleEdit}
+                onStatusAdvance={handleStatusAdvance}
+                isAdvancing={updateEvent.isPending}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="wine-card text-center py-12 space-y-4">
+            <Wine className="h-12 w-12 mx-auto text-[#C9A040]/50" />
+            <h3 className="font-wine text-xl text-[#F0E3C7]">No tasting events</h3>
+            <p className="text-sm text-[#A08060] max-w-xs mx-auto">
+              Create a blind tasting event for wine, chili, BBQ, or anything else.
+            </p>
+            <button onClick={() => setFormOpen(true)} className="wine-btn wine-btn-sm mx-auto !w-auto">
+              <Plus className="h-4 w-4" />
+              Create Tasting Event
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Add/Edit Event Modal */}
       <WineEventFormModal

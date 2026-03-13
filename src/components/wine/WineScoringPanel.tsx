@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Check, Grape } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { useSubmitWineScore } from "@/hooks/useWineEventDetail";
 import { WINE_TYPES, PRICE_RANGES, WINE_VARIETALS } from "@/constants";
 import type { WineEntryWithSubmitter } from "@/types";
@@ -37,7 +35,6 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
   const [tasteNotes, setTasteNotes] = useState<Record<string, EntryRating>>({});
   const [grapeDropdownOpen, setGrapeDropdownOpen] = useState(false);
 
-  // Initialize from existing notes or empty
   useEffect(() => {
     const initial: Record<string, EntryRating> = {};
     scorableEntries.forEach((e) => {
@@ -84,9 +81,7 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
     try {
       await submitScore.mutateAsync({ tripId, eventId, tasteNotes });
       onComplete?.();
-    } catch {
-      // Error handled by mutation
-    }
+    } catch {}
   };
 
   const filteredVarietals = activeNotes?.grapeGuess
@@ -95,11 +90,9 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
 
   if (scorableEntries.length === 0) {
     return (
-      <Card className="border-slate-700">
-        <CardContent className="pt-6 text-center text-sm text-slate-500">
-          No bags assigned yet. The host needs to assign bag numbers.
-        </CardContent>
-      </Card>
+      <div className="wine-card text-center text-sm text-[#A08060] py-6">
+        No bags assigned yet. The host needs to assign bag numbers.
+      </div>
     );
   }
 
@@ -107,20 +100,18 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
     <div className="space-y-4">
       {/* Progress header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-300">
+        <span className="text-sm font-medium text-[#C4A882]">
           Scoring: {scoredCount}/{scorableEntries.length} bottles
         </span>
         {allScored && (
-          <Button
+          <button
             onClick={handleSubmit}
-            isLoading={submitScore.isPending}
-            variant="amber"
-            size="sm"
-            className="gap-1"
+            disabled={submitScore.isPending}
+            className="wine-btn wine-btn-sm !w-auto text-sm"
           >
             <Check className="h-4 w-4" />
             {existingNotes ? "Update Scores" : "Submit All Scores"}
-          </Button>
+          </button>
         )}
       </div>
 
@@ -135,10 +126,10 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
               onClick={() => setActiveIndex(idx)}
               className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all ${
                 isActive
-                  ? "bg-amber-500 text-slate-900 ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900 scale-110"
+                  ? "bg-[#C9A040] text-[#1a0508] ring-2 ring-[#C9A040] ring-offset-2 ring-offset-[#160407] scale-110"
                   : isScored
-                  ? "bg-purple-500/30 text-purple-300 border border-purple-500/50"
-                  : "bg-slate-700/50 text-slate-400 border border-slate-600 hover:border-slate-400"
+                  ? "bg-[#C9A040]/20 text-[#C9A040] border border-[#C9A040]/50"
+                  : "bg-[#2A0A0E] text-[#A08060] border border-[#A08060]/30 hover:border-[#C9A040]/50"
               }`}
             >
               {entry.bagNumber}
@@ -149,169 +140,157 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
 
       {/* Active bottle scoring card */}
       {activeEntry && activeNotes && (
-        <Card className="border-amber-500/30 bg-slate-800/80">
-          <CardContent className="pt-6 space-y-5">
-            {/* Bottle header */}
-            <div className="text-center">
-              <p className="text-3xl font-bold text-amber-400">#{activeEntry.bagNumber}</p>
-              <p className="text-xs text-slate-500 mt-1">
-                Bottle {activeIndex + 1} of {scorableEntries.length}
+        <div className="wine-card-gold p-5 space-y-5">
+          {/* Bottle header */}
+          <div className="text-center">
+            <p className="font-wine text-4xl font-bold text-[#C9A040]">Bottle #{activeEntry.bagNumber}</p>
+            <p className="text-xs text-[#A08060] mt-1">
+              {activeIndex + 1} of {scorableEntries.length}
+            </p>
+          </div>
+
+          {/* Score buttons: two rows of 5 */}
+          <div className="space-y-2">
+            <p className="text-xs text-[#A08060] text-center uppercase tracking-wider">Score</p>
+            <div className="grid grid-cols-5 gap-2">
+              {SCORES.map((score) => (
+                <button
+                  key={score}
+                  onClick={() => updateField("rating", activeNotes.rating === score ? 0 : score)}
+                  className={`h-12 rounded-lg text-sm font-bold transition-all ${
+                    activeNotes.rating === score
+                      ? "bg-[#C9A040] text-[#1a0508] scale-105 shadow-lg shadow-[#C9A040]/30"
+                      : "bg-[#160407] text-[#C4A882] hover:bg-[#C9A040]/10 border border-[#C9A040]/20"
+                  }`}
+                >
+                  {score}
+                </button>
+              ))}
+            </div>
+            {activeNotes.rating > 0 && (
+              <p className="text-center text-sm font-wine font-bold text-[#C9A040]">
+                {activeNotes.rating}/10
               </p>
-            </div>
+            )}
+          </div>
 
-            {/* Score buttons: 1-10 */}
-            <div className="space-y-2">
-              <p className="text-xs text-slate-400 text-center">Score</p>
-              <div className="grid grid-cols-5 gap-2">
-                {SCORES.map((score) => (
+          {/* Wine type chips */}
+          <div className="space-y-2">
+            <p className="text-xs text-[#A08060] text-center uppercase tracking-wider">Type (optional)</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {WINE_TYPES.map((wt) => (
+                <button
+                  key={wt.value}
+                  onClick={() => updateField("wineType", activeNotes.wineType === wt.value ? "" : wt.value)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
+                    activeNotes.wineType === wt.value
+                      ? "bg-[#C9A040]/20 text-[#C9A040] border border-[#C9A040]/50"
+                      : "bg-[#160407] text-[#A08060] border border-[#A08060]/30 hover:border-[#C9A040]/40"
+                  }`}
+                >
+                  {wt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grape guess */}
+          <div className="space-y-1 relative">
+            <p className="text-xs text-[#A08060] flex items-center gap-1 justify-center uppercase tracking-wider">
+              <Grape className="h-3 w-3" />
+              Grape Guess (optional)
+            </p>
+            <Input
+              placeholder="e.g., Cabernet Sauvignon"
+              value={activeNotes.grapeGuess}
+              onChange={(e) => updateField("grapeGuess", e.target.value)}
+              onFocus={() => setGrapeDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setGrapeDropdownOpen(false), 200)}
+              className="text-sm text-center bg-[#160407] border-[#C9A040]/20 text-[#F0E3C7] placeholder:text-[#A08060]/50"
+            />
+            {grapeDropdownOpen && filteredVarietals.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full rounded-lg border border-[#C9A040]/30 bg-[#2A0A0E] shadow-lg">
+                {filteredVarietals.map((v) => (
                   <button
-                    key={score}
-                    onClick={() => updateField("rating", activeNotes.rating === score ? 0 : score)}
-                    className={`h-11 rounded-lg text-sm font-bold transition-all ${
-                      activeNotes.rating === score
-                        ? "bg-amber-500 text-slate-900 scale-105 shadow-lg shadow-amber-500/30"
-                        : "bg-slate-700/60 text-slate-300 hover:bg-slate-600 border border-slate-600"
-                    }`}
+                    key={v}
+                    type="button"
+                    className="w-full px-3 py-1.5 text-left text-sm text-[#C4A882] hover:bg-[#C9A040]/10"
+                    onMouseDown={() => {
+                      updateField("grapeGuess", v);
+                      setGrapeDropdownOpen(false);
+                    }}
                   >
-                    {score}
+                    {v}
                   </button>
                 ))}
               </div>
-              {activeNotes.rating > 0 && (
-                <p className="text-center text-xs text-amber-400/80">
-                  {activeNotes.rating}/10
-                </p>
-              )}
-            </div>
+            )}
+          </div>
 
-            {/* Wine type chips */}
-            <div className="space-y-2">
-              <p className="text-xs text-slate-400 text-center">Type (optional)</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {WINE_TYPES.map((wt) => (
-                  <button
-                    key={wt.value}
-                    onClick={() => updateField("wineType", activeNotes.wineType === wt.value ? "" : wt.value)}
-                    className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
-                      activeNotes.wineType === wt.value
-                        ? "bg-purple-500/40 text-purple-200 border border-purple-400/60"
-                        : "bg-slate-700/50 text-slate-400 border border-slate-600 hover:text-slate-300 hover:border-slate-400"
-                    }`}
-                  >
-                    {wt.label}
-                  </button>
-                ))}
-              </div>
+          {/* Price range chips */}
+          <div className="space-y-2">
+            <p className="text-xs text-[#A08060] text-center uppercase tracking-wider">Price Guess (optional)</p>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {PRICE_RANGES.map((pr) => (
+                <button
+                  key={pr.value}
+                  onClick={() => updateField("priceRangeGuess", activeNotes.priceRangeGuess === pr.value ? "" : pr.value)}
+                  className={`rounded-full px-3 py-1 text-[11px] font-medium transition-all ${
+                    activeNotes.priceRangeGuess === pr.value
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                      : "bg-[#160407] text-[#A08060] border border-[#A08060]/30 hover:border-[#C9A040]/40"
+                  }`}
+                >
+                  {pr.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Grape guess */}
-            <div className="space-y-1 relative">
-              <p className="text-xs text-slate-400 flex items-center gap-1 justify-center">
-                <Grape className="h-3 w-3" />
-                Grape Guess (optional)
-              </p>
-              <Input
-                placeholder="e.g., Cabernet Sauvignon"
-                value={activeNotes.grapeGuess}
-                onChange={(e) => updateField("grapeGuess", e.target.value)}
-                onFocus={() => setGrapeDropdownOpen(true)}
-                onBlur={() => setTimeout(() => setGrapeDropdownOpen(false), 200)}
-                className="text-sm text-center"
-              />
-              {grapeDropdownOpen && filteredVarietals.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-lg border border-slate-600 bg-slate-800 shadow-lg">
-                  {filteredVarietals.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className="w-full px-3 py-1.5 text-left text-sm text-slate-300 hover:bg-slate-700"
-                      onMouseDown={() => {
-                        updateField("grapeGuess", v);
-                        setGrapeDropdownOpen(false);
-                      }}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Notes */}
+          <div className="space-y-1">
+            <p className="text-xs text-[#A08060] text-center uppercase tracking-wider">Notes (optional)</p>
+            <textarea
+              placeholder="Aromas, flavors, finish..."
+              value={activeNotes.notes}
+              onChange={(e) => updateField("notes", e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-[#C9A040]/20 bg-[#160407] px-3 py-2 text-sm text-[#F0E3C7] placeholder:text-[#A08060]/50 focus:border-[#C9A040]/50 focus:outline-none focus:ring-1 focus:ring-[#C9A040]/30"
+            />
+          </div>
 
-            {/* Price range chips */}
-            <div className="space-y-2">
-              <p className="text-xs text-slate-400 text-center">Price Guess (optional)</p>
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {PRICE_RANGES.map((pr) => (
-                  <button
-                    key={pr.value}
-                    onClick={() => updateField("priceRangeGuess", activeNotes.priceRangeGuess === pr.value ? "" : pr.value)}
-                    className={`rounded-full px-3 py-1 text-[11px] font-medium transition-all ${
-                      activeNotes.priceRangeGuess === pr.value
-                        ? "bg-green-500/30 text-green-300 border border-green-400/50"
-                        : "bg-slate-700/50 text-slate-400 border border-slate-600 hover:text-slate-300"
-                    }`}
-                  >
-                    {pr.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Prev/Next navigation */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={goPrev}
+              disabled={activeIndex === 0}
+              className="wine-btn-ghost wine-btn-sm !w-auto disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Prev
+            </button>
 
-            {/* Notes */}
-            <div className="space-y-1">
-              <p className="text-xs text-slate-400 text-center">Notes (optional)</p>
-              <textarea
-                placeholder="Aromas, flavors, finish..."
-                value={activeNotes.notes}
-                onChange={(e) => updateField("notes", e.target.value)}
-                rows={2}
-                className="w-full rounded-lg border border-slate-600 bg-slate-700/50 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
-              />
-            </div>
+            <span className="text-xs text-[#A08060]">
+              {activeIndex + 1} / {scorableEntries.length}
+            </span>
 
-            {/* Prev/Next navigation */}
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={goPrev}
-                disabled={activeIndex === 0}
-                className="gap-1"
+            {activeIndex < scorableEntries.length - 1 ? (
+              <button onClick={goNext} className="wine-btn-ghost wine-btn-sm !w-auto">
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={!allScored || submitScore.isPending}
+                className="wine-btn wine-btn-sm !w-auto"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Prev
-              </Button>
-
-              <span className="text-xs text-slate-500">
-                {activeIndex + 1} / {scorableEntries.length}
-              </span>
-
-              {activeIndex < scorableEntries.length - 1 ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goNext}
-                  className="gap-1"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  variant="amber"
-                  size="sm"
-                  onClick={handleSubmit}
-                  disabled={!allScored}
-                  isLoading={submitScore.isPending}
-                  className="gap-1"
-                >
-                  <Check className="h-4 w-4" />
-                  Finish
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <Check className="h-4 w-4" />
+                Finish
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

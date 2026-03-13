@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { Trophy, Brain, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/avatar";
 import { HOOD_BUCKS, CONTEST_TYPES } from "@/constants";
 import type { BestPalateResult, HoodBucksAwardSummary } from "@/types";
@@ -42,22 +40,22 @@ function PlaceRevealCard({ result, place, medal, color }: { result: PlaceResult;
   const name = result.submittedBy?.user?.name || result.submittedBy?.guestName || "Unknown";
 
   return (
-    <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="text-center space-y-4 animate-slideUp">
       <p className="text-6xl">{medal}</p>
-      <p className={`text-sm font-medium uppercase tracking-widest ${color}`}>{place}</p>
+      <p className={`text-sm font-medium uppercase tracking-[0.15em] ${color}`}>{place}</p>
       <div>
-        <p className="text-2xl font-bold text-slate-100">Bag #{result.bagNumber}</p>
-        <p className="text-lg text-amber-400 font-semibold mt-1">
-          {result.avgScore.toFixed(1)}<span className="text-sm text-slate-400">/10</span>
+        <p className="font-wine text-3xl font-bold text-[#F0E3C7]">Bottle #{result.bagNumber}</p>
+        <p className="font-wine text-2xl text-[#C9A040] font-bold mt-1">
+          {result.avgScore.toFixed(1)}<span className="text-sm text-[#A08060]">/10</span>
         </p>
-        <p className="text-xs text-slate-500 mt-1">{result.totalVoters} votes</p>
+        <p className="text-xs text-[#A08060] mt-1">{result.totalVoters} votes</p>
       </div>
-      <div className="pt-3 border-t border-slate-700">
-        <p className="text-lg font-semibold text-slate-200">{result.wineName}</p>
-        {result.winery && <p className="text-sm text-slate-400">{result.winery}</p>}
+      <div className="pt-3 border-t border-[#C9A040]/15">
+        <p className="font-wine text-lg font-semibold text-[#F0E3C7]">{result.wineName}</p>
+        {result.winery && <p className="text-sm text-[#A08060]">{result.winery}</p>}
         <div className="flex items-center justify-center gap-2 mt-2">
           <UserAvatar name={name} src={result.submittedBy?.user?.avatarUrl} size="sm" />
-          <span className="text-sm text-slate-300">{name}</span>
+          <span className="text-sm text-[#C4A882]">{name}</span>
         </div>
       </div>
     </div>
@@ -68,7 +66,6 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
   const [step, setStep] = useState(0);
   const typeInfo = CONTEST_TYPES.find((t) => t.value === contestType) || CONTEST_TYPES[0];
 
-  // Total steps: intro(0) + 3rd(1) + 2nd(2) + 1st(3) + bestPalate(4) + summary(5)
   const hasThird = !!results.third;
   const hasSecond = !!results.second;
   const hasBestPalate = !!results.bestPalate;
@@ -79,15 +76,15 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
   steps.push({
     key: "intro",
     content: (
-      <div className="text-center space-y-6 animate-in fade-in duration-500">
+      <div className="text-center space-y-6 animate-fadeIn">
         <p className="text-7xl">🍾</p>
-        <p className="text-2xl font-bold text-slate-100">Time to Reveal!</p>
-        <p className="text-sm text-slate-400">The scores are in. Let&apos;s see who won...</p>
+        <p className="font-wine text-3xl font-bold text-[#C9A040]">The Moment of Truth</p>
+        <p className="text-sm text-[#A08060] italic">The scores are in. Let&apos;s see who won...</p>
       </div>
     ),
   });
 
-  // Step 1: 3rd place
+  // 3rd place
   if (hasThird) {
     steps.push({
       key: "third",
@@ -95,7 +92,7 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
     });
   }
 
-  // Step 2: 2nd place
+  // 2nd place
   if (hasSecond) {
     steps.push({
       key: "second",
@@ -103,27 +100,27 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
     });
   }
 
-  // Step 3: 1st place
+  // 1st place
   if (results.winner) {
     steps.push({
       key: "first",
-      content: <PlaceRevealCard result={results.winner} place="First Place" medal="🥇" color="text-amber-400" />,
+      content: <PlaceRevealCard result={results.winner} place="Champion" medal="🥇" color="text-[#C9A040]" />,
     });
   }
 
-  // Step 4: Best Palate
+  // Best Palate
   if (hasBestPalate) {
     steps.push({
       key: "palate",
       content: (
-        <div className="text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <Brain className="h-16 w-16 text-purple-400 mx-auto" />
-          <p className="text-sm font-medium uppercase tracking-widest text-purple-400">Best Palate Award</p>
-          <p className="text-xs text-slate-500">Closest match to group consensus</p>
+        <div className="text-center space-y-4 animate-slideUp">
+          <p className="text-5xl">🎯</p>
+          <p className="text-sm font-medium uppercase tracking-[0.15em] text-purple-400">Best Palate Award</p>
+          <p className="text-xs text-[#A08060]">Closest to group consensus</p>
           <div className="flex items-center justify-center gap-3 mt-4">
             <UserAvatar name={results.bestPalate!.memberName} src={results.bestPalate!.avatarUrl} size="lg" />
             <div className="text-left">
-              <p className="text-xl font-bold text-slate-100">{results.bestPalate!.memberName}</p>
+              <p className="font-wine text-xl font-bold text-[#F0E3C7]">{results.bestPalate!.memberName}</p>
               <p className="text-xs text-purple-400">Distance: {results.bestPalate!.spearmanDistance.toFixed(1)}</p>
             </div>
           </div>
@@ -132,15 +129,15 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
     });
   }
 
-  // Step 5: Summary
+  // Summary
   steps.push({
     key: "summary",
     content: (
-      <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="space-y-6 animate-fadeIn">
         <div className="text-center">
           <p className="text-4xl mb-2">{typeInfo.emoji}</p>
-          <p className="text-xl font-bold text-slate-100">Final Results</p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="font-wine text-2xl font-bold text-[#C9A040]">Final Results</p>
+          <p className="text-xs text-[#A08060] mt-1">
             {results.totalScores} tasters &middot; {results.totalEntries} bottles
           </p>
         </div>
@@ -150,27 +147,27 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
           {results.second && (
             <div className="flex-1 text-center">
               <p className="text-2xl">🥈</p>
-              <div className="rounded-t-lg border border-slate-400/30 bg-slate-400/10 p-2 min-h-[80px]">
-                <p className="text-xs font-bold text-slate-200 truncate">{results.second.wineName}</p>
-                <p className="text-xs text-amber-400">{results.second.avgScore.toFixed(1)}</p>
+              <div className="rounded-t-lg border border-slate-400/20 bg-slate-400/5 p-2 min-h-[80px]">
+                <p className="text-xs font-bold text-[#F0E3C7] truncate font-wine">{results.second.wineName}</p>
+                <p className="text-xs text-[#C9A040] font-wine">{results.second.avgScore.toFixed(1)}</p>
               </div>
             </div>
           )}
           {results.winner && (
             <div className="flex-1 text-center">
               <p className="text-3xl">🥇</p>
-              <div className="rounded-t-lg border border-amber-500/30 bg-amber-500/10 p-2 min-h-[100px]">
-                <p className="text-sm font-bold text-slate-100 truncate">{results.winner.wineName}</p>
-                <p className="text-sm text-amber-400 font-bold">{results.winner.avgScore.toFixed(1)}</p>
+              <div className="rounded-t-lg border border-[#C9A040]/30 bg-[#C9A040]/10 p-2 min-h-[100px]">
+                <p className="text-sm font-bold text-[#F0E3C7] truncate font-wine">{results.winner.wineName}</p>
+                <p className="text-sm text-[#C9A040] font-bold font-wine">{results.winner.avgScore.toFixed(1)}</p>
               </div>
             </div>
           )}
           {results.third && (
             <div className="flex-1 text-center">
               <p className="text-xl">🥉</p>
-              <div className="rounded-t-lg border border-orange-500/30 bg-orange-500/10 p-2 min-h-[60px]">
-                <p className="text-xs font-bold text-slate-200 truncate">{results.third.wineName}</p>
-                <p className="text-xs text-amber-400">{results.third.avgScore.toFixed(1)}</p>
+              <div className="rounded-t-lg border border-orange-500/20 bg-orange-500/5 p-2 min-h-[60px]">
+                <p className="text-xs font-bold text-[#F0E3C7] truncate font-wine">{results.third.wineName}</p>
+                <p className="text-xs text-[#C9A040] font-wine">{results.third.avgScore.toFixed(1)}</p>
               </div>
             </div>
           )}
@@ -178,16 +175,16 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
 
         {/* Hood Bucks */}
         {results.hoodBucksAwards && results.hoodBucksAwards.length > 0 && (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-            <p className="text-sm font-semibold text-amber-300 mb-3">
+          <div className="rounded-xl border border-[#C9A040]/20 bg-[#C9A040]/5 p-4">
+            <p className="text-sm font-semibold text-[#C9A040] mb-3 font-wine">
               {HOOD_BUCKS.CURRENCY_ICON} Hood Bucks Awarded
             </p>
             <div className="space-y-2">
               {results.hoodBucksAwards.map((award, i) => (
                 <div key={i} className="flex items-center justify-between">
-                  <span className="text-sm text-slate-300">{award.place}</span>
-                  <span className="text-sm text-slate-200">{award.memberName}</span>
-                  <span className="text-sm font-bold text-amber-400">+{award.amount} {HOOD_BUCKS.CURRENCY_SYMBOL}</span>
+                  <span className="text-sm text-[#C4A882]">{award.place}</span>
+                  <span className="text-sm text-[#F0E3C7]">{award.memberName}</span>
+                  <span className="text-sm font-bold text-[#C9A040]">+{award.amount} {HOOD_BUCKS.CURRENCY_SYMBOL}</span>
                 </div>
               ))}
             </div>
@@ -216,44 +213,37 @@ export function RevealSequence({ results, contestType, onComplete }: RevealSeque
   const isLastStep = step === steps.length - 1;
 
   return (
-    <Card className="border-amber-500/20 bg-slate-800/90">
-      <CardContent className="pt-8 pb-6 px-6 min-h-[300px] flex flex-col items-center justify-center">
+    <div className="wine-card-gold p-6 space-y-6">
+      <div className="min-h-[280px] flex items-center justify-center">
         {steps[step]?.content}
+      </div>
 
-        <div className="mt-8 w-full">
-          {!isLastStep ? (
-            <Button
-              onClick={() => setStep(step + 1)}
-              className="w-full gap-2"
-              variant="amber"
-            >
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              onClick={onComplete}
-              className="w-full"
-            >
-              <Trophy className="h-4 w-4 mr-2" />
-              View Full Results
-            </Button>
-          )}
+      <div className="space-y-4">
+        {!isLastStep ? (
+          <button onClick={() => setStep(step + 1)} className="wine-btn">
+            {step === 0 ? "Reveal 3rd Place" : "Next"}
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <button onClick={onComplete} className="wine-btn">
+            <Trophy className="h-4 w-4" />
+            View Full Results
+          </button>
+        )}
 
-          {/* Step dots */}
-          <div className="flex justify-center gap-1.5 mt-4">
-            {steps.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setStep(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === step ? "w-6 bg-amber-400" : i < step ? "w-1.5 bg-amber-400/50" : "w-1.5 bg-slate-600"
-                }`}
-              />
-            ))}
-          </div>
+        {/* Step dots */}
+        <div className="flex justify-center gap-1.5">
+          {steps.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setStep(i)}
+              className={`h-1.5 rounded-full transition-all ${
+                i === step ? "w-6 bg-[#C9A040]" : i < step ? "w-1.5 bg-[#C9A040]/50" : "w-1.5 bg-[#A08060]/30"
+              }`}
+            />
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

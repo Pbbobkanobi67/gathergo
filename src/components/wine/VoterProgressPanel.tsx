@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckCircle2, Circle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/avatar";
 
 interface VoterProgress {
@@ -23,72 +22,72 @@ export function VoterProgressPanel({ voters }: VoterProgressPanelProps) {
   const completedCount = voters.filter((v) => v.complete).length;
 
   return (
-    <Card className="border-slate-700">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-base">
-          <span className="text-slate-200">Tasters</span>
-          <span className="text-xs text-slate-400">
-            {completedCount}/{voters.length} done
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {voters.map((voter) => {
-            const progress = voter.totalBottles > 0
-              ? (voter.bottlesScored / voter.totalBottles) * 100
-              : 0;
+    <div className="wine-card space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-wine text-lg text-[#F0E3C7]">Tasters</h3>
+        <span className="text-xs text-[#A08060]">
+          {completedCount}/{voters.length} done
+        </span>
+      </div>
+      <div className="space-y-2">
+        {voters.map((voter) => {
+          const progress = voter.totalBottles > 0
+            ? (voter.bottlesScored / voter.totalBottles) * 100
+            : 0;
 
-            return (
-              <div
-                key={voter.memberId}
-                className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
-                  voter.complete
-                    ? "border-green-500/30 bg-green-500/5"
-                    : voter.bottlesScored > 0
-                    ? "border-amber-500/20 bg-amber-500/5"
-                    : "border-slate-700 bg-slate-800/50"
-                }`}
-              >
-                <UserAvatar name={voter.name} src={voter.avatarUrl} size="sm" />
+          return (
+            <div
+              key={voter.memberId}
+              className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${
+                voter.complete
+                  ? "bg-emerald-500/10 border border-emerald-500/20"
+                  : voter.bottlesScored > 0
+                  ? "bg-[#C9A040]/5 border border-[#C9A040]/15"
+                  : "bg-[#160407] border border-[#A08060]/15"
+              }`}
+            >
+              <UserAvatar name={voter.name} src={voter.avatarUrl} size="sm" />
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-200 truncate">
-                      {voter.name}
-                    </span>
-                    <span className="text-xs text-slate-400 shrink-0 ml-2">
-                      {voter.complete ? (
-                        <span className="flex items-center gap-1 text-green-400">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Done
-                        </span>
-                      ) : voter.bottlesScored > 0 ? (
-                        `${voter.bottlesScored}/${voter.totalBottles}`
-                      ) : (
-                        <span className="flex items-center gap-1 text-slate-500">
-                          <Circle className="h-3 w-3" />
-                          Waiting
-                        </span>
-                      )}
-                    </span>
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium text-[#F0E3C7] truncate font-wine">
+                    {voter.name}
+                  </span>
+                  <span className="text-xs shrink-0 ml-2">
+                    {voter.complete ? (
+                      <span className="flex items-center gap-1 text-emerald-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Done
+                      </span>
+                    ) : voter.bottlesScored > 0 ? (
+                      <span className="text-[#C9A040]">
+                        {voter.bottlesScored}/{voter.totalBottles}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[#A08060]/60">
+                        <Circle className="h-3 w-3" />
+                        Waiting
+                      </span>
+                    )}
+                  </span>
+                </div>
 
-                  {/* Progress bar */}
-                  <div className="h-1.5 w-full rounded-full bg-slate-700">
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-500 ${
-                        voter.complete ? "bg-green-500" : "bg-amber-500"
-                      }`}
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
+                {/* Progress bar */}
+                <div className="h-1 w-full rounded-full bg-[#A08060]/15">
+                  <div
+                    className={`h-1 rounded-full transition-all duration-500 ${
+                      voter.complete
+                        ? "bg-emerald-500"
+                        : "bg-gradient-to-r from-[#C9A040] to-[#D4B050]"
+                    }`}
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

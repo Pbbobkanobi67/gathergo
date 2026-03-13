@@ -15,8 +15,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -80,14 +78,12 @@ export default function WineEventDetailPage() {
     betAmountCash: "0",
   });
 
-  // Find current user's member ID
   const currentMemberId = useMemo(() => {
     if (!clerkUser || !membersData) return null;
     const found = membersData.find((m: { userId: string | null }) => m.userId === clerkUser.id);
     return found?.id || null;
   }, [clerkUser, membersData]);
 
-  // Check if user is organizer
   const isOrganizer = useMemo(() => {
     if (!membersData || !currentMemberId) return false;
     const member = membersData.find((m: { id: string }) => m.id === currentMemberId);
@@ -106,13 +102,9 @@ export default function WineEventDetailPage() {
   const scores = event.scores || [];
   const bets = event.bets || [];
   const isRevealed = event.status === "REVEAL" || event.status === "COMPLETE";
-  const showDetails = isRevealed || event.status === "SETUP" || event.status === "OPEN";
 
-  // My entries (visible to me during OPEN)
   const myEntries = entries.filter((e) => e.submittedByMemberId === currentMemberId);
   const entriesRemaining = event.entriesPerPerson - myEntries.length;
-
-  // Entries with bag numbers (for scoring view)
   const assignedEntries = entries.filter((e) => e.bagNumber !== null);
   const unassignedEntries = entries.filter((e) => e.bagNumber === null);
   const needsBagAssignment = event.status === "SCORING" && unassignedEntries.length > 0 && isOrganizer;
@@ -139,9 +131,7 @@ export default function WineEventDetailPage() {
   const handleDeleteEntry = async (entry: WineEntryWithSubmitter) => {
     try {
       await deleteEntry.mutateAsync({ tripId, eventId, entryId: entry.id });
-    } catch {
-      // Error handled by mutation
-    }
+    } catch {}
   };
 
   const handleEditEntry = (entry: WineEntryWithSubmitter) => {
@@ -163,14 +153,11 @@ export default function WineEventDetailPage() {
 
   const handleStatusAdvance = async (nextStatus: string) => {
     if (nextStatus === "REVEAL") {
-      // Use reveal endpoint for proper scoring
       try {
         const results = await revealWinners.mutateAsync({ tripId, eventId });
         setRevealResults(results);
         setConfettiOpen(true);
-      } catch {
-        // Error handled by mutation
-      }
+      } catch {}
     } else {
       await updateEvent.mutateAsync({
         tripId,
@@ -191,154 +178,145 @@ export default function WineEventDetailPage() {
     COMPLETE: "Complete Event",
   };
 
-  // Entry options for bet dialog (only entries with bag numbers)
   const entryOptions = assignedEntries.map((e) => ({
     value: e.id,
     label: isRevealed ? `Bag #${e.bagNumber} - ${e.wineName}` : `Bag #${e.bagNumber}`,
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href={`/trips/${tripId}/wine`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{typeInfo.emoji}</span>
-              <h1 className="text-2xl font-bold text-slate-100">{event.title}</h1>
+    <div className="wine-page -mx-4 -mt-6 -mb-20 px-4 pt-6 pb-20 lg:-mx-6 lg:px-6 lg:-mb-6 lg:pb-6 rounded-t-2xl">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Link href={`/trips/${tripId}/wine`}>
+              <button className="p-2 rounded-lg text-[#A08060] hover:text-[#C9A040] transition-colors">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{typeInfo.emoji}</span>
+                <h1 className="font-wine text-2xl font-bold text-[#C9A040]">{event.title}</h1>
+              </div>
+              <p className="text-sm text-[#A08060]">
+                {formatDate(event.date)} &middot; {statusInfo.label}
+              </p>
             </div>
-            <p className="text-sm text-slate-400">
-              {formatDate(event.date)} &middot; {statusInfo.label}
-            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {isOrganizer && (
+              <button
+                onClick={() => setEventFormOpen(true)}
+                className="p-2 rounded-lg text-[#A08060] hover:text-[#C9A040] transition-colors"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+            {event.status === "OPEN" && entriesRemaining > 0 && (
+              <button onClick={() => setEntryFormOpen(true)} className="wine-btn wine-btn-sm !w-auto">
+                <Plus className="h-4 w-4" />
+                Add Entry
+              </button>
+            )}
+            {event.status === "SCORING" && assignedEntries.length > 0 && (
+              <button onClick={() => setBetOpen(true)} className="wine-btn-ghost wine-btn-sm !w-auto">
+                <DollarSign className="h-4 w-4" />
+                Place Bet
+              </button>
+            )}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {isOrganizer && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setEventFormOpen(true)}
-              className="text-slate-400 hover:text-slate-200"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          )}
-          {event.status === "OPEN" && entriesRemaining > 0 && (
-            <Button onClick={() => setEntryFormOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Entry
-            </Button>
-          )}
-          {event.status === "SCORING" && assignedEntries.length > 0 && (
-            <Button onClick={() => setBetOpen(true)} variant="amber" className="gap-2">
-              <DollarSign className="h-4 w-4" />
-              Place Bet
-            </Button>
-          )}
-        </div>
-      </div>
 
-      {/* Contest Stepper */}
-      <ContestStepper currentStatus={event.status} />
+        {/* Contest Stepper */}
+        <ContestStepper currentStatus={event.status} />
 
-      {/* How To Play */}
-      <HowToPlay
-        contestType={event.contestType}
-        customInstructions={event.instructions}
-        status={event.status}
-      />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
-          <p className="text-2xl font-bold text-purple-400">{event._count?.entries || 0}</p>
-          <p className="text-xs text-slate-400">Entries</p>
-        </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
-          <p className="text-2xl font-bold text-teal-400">{scores.length}{membersData ? `/${membersData.length}` : ""}</p>
-          <p className="text-xs text-slate-400">Scored</p>
-        </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
-          <p className="text-2xl font-bold text-amber-400">{bets.length}</p>
-          <p className="text-xs text-slate-400">Bets</p>
-        </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 text-center">
-          <p className="text-lg font-bold text-amber-400">
-            {event.hoodBucksPotSize} {HOOD_BUCKS.CURRENCY_SYMBOL}
-          </p>
-          <p className="text-xs text-slate-400">Prize Pool</p>
-        </div>
-      </div>
-
-      {/* SETUP phase: Event config summary */}
-      {event.status === "SETUP" && (
-        <Card className="border-slate-700">
-          <CardContent className="pt-6">
-            <div className="space-y-2 text-sm text-slate-300">
-              <p><strong>Type:</strong> {typeInfo.emoji} {typeInfo.label}</p>
-              <p><strong>Entries per person:</strong> {event.entriesPerPerson}</p>
-              <p><strong>Price range:</strong> ${event.priceRangeMin} - ${event.priceRangeMax}</p>
-              <p><strong>Cash bets:</strong> {event.allowCashBets ? "Allowed" : "Not allowed"}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Bag Assignment Panel (admin, SCORING phase, unassigned entries) */}
-      {needsBagAssignment && (
-        <BagAssignmentPanel
-          entries={entries}
-          tripId={tripId}
-          eventId={eventId}
-          onComplete={() => {}}
+        {/* How To Play */}
+        <HowToPlay
+          contestType={event.contestType}
+          customInstructions={event.instructions}
+          status={event.status}
         />
-      )}
 
-      {/* Inline Scoring Panel (SCORING phase) */}
-      {event.status === "SCORING" && assignedEntries.length > 0 && (
-        <WineScoringPanel
-          tripId={tripId}
-          eventId={eventId}
-          entries={entries}
-          existingNotes={leaderboardData?.myTasteNotes}
-        />
-      )}
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="wine-card !p-3 text-center">
+            <p className="font-wine text-2xl font-bold text-[#F0E3C7]">{event._count?.entries || 0}</p>
+            <p className="text-[10px] uppercase tracking-wider text-[#A08060]">Entries</p>
+          </div>
+          <div className="wine-card !p-3 text-center">
+            <p className="font-wine text-2xl font-bold text-[#F0E3C7]">{scores.length}{membersData ? `/${membersData.length}` : ""}</p>
+            <p className="text-[10px] uppercase tracking-wider text-[#A08060]">Scored</p>
+          </div>
+          <div className="wine-card !p-3 text-center">
+            <p className="font-wine text-2xl font-bold text-[#F0E3C7]">{bets.length}</p>
+            <p className="text-[10px] uppercase tracking-wider text-[#A08060]">Bets</p>
+          </div>
+          <div className="wine-card !p-3 text-center">
+            <p className="font-wine text-lg font-bold text-[#C9A040]">
+              {event.hoodBucksPotSize} {HOOD_BUCKS.CURRENCY_SYMBOL}
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-[#A08060]">Prize Pool</p>
+          </div>
+        </div>
 
-      {/* Voter Progress (SCORING phase) */}
-      {event.status === "SCORING" && leaderboardData?.voterProgress && (
-        <VoterProgressPanel voters={leaderboardData.voterProgress} />
-      )}
+        {/* SETUP phase: Event config */}
+        {event.status === "SETUP" && (
+          <div className="wine-card space-y-2 text-sm text-[#C4A882]">
+            <p><strong className="text-[#F0E3C7]">Type:</strong> {typeInfo.emoji} {typeInfo.label}</p>
+            <p><strong className="text-[#F0E3C7]">Entries per person:</strong> {event.entriesPerPerson}</p>
+            <p><strong className="text-[#F0E3C7]">Price range:</strong> ${event.priceRangeMin} - ${event.priceRangeMax}</p>
+            <p><strong className="text-[#F0E3C7]">Cash bets:</strong> {event.allowCashBets ? "Allowed" : "Not allowed"}</p>
+          </div>
+        )}
 
-      {/* Live Leaderboard (SCORING phase) */}
-      {event.status === "SCORING" && assignedEntries.length > 0 && (
-        <LiveLeaderboard tripId={tripId} eventId={eventId} />
-      )}
+        {/* Bag Assignment Panel */}
+        {needsBagAssignment && (
+          <BagAssignmentPanel
+            entries={entries}
+            tripId={tripId}
+            eventId={eventId}
+            onComplete={() => {}}
+          />
+        )}
 
-      {/* My Entries Section (OPEN phase) */}
-      {event.status === "OPEN" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-lg">
-              <span className="flex items-center gap-2">
+        {/* Inline Scoring Panel (SCORING phase) */}
+        {event.status === "SCORING" && assignedEntries.length > 0 && (
+          <WineScoringPanel
+            tripId={tripId}
+            eventId={eventId}
+            entries={entries}
+            existingNotes={leaderboardData?.myTasteNotes}
+          />
+        )}
+
+        {/* Voter Progress (SCORING phase) */}
+        {event.status === "SCORING" && leaderboardData?.voterProgress && (
+          <VoterProgressPanel voters={leaderboardData.voterProgress} />
+        )}
+
+        {/* Live Leaderboard (SCORING phase) */}
+        {event.status === "SCORING" && assignedEntries.length > 0 && (
+          <LiveLeaderboard tripId={tripId} eventId={eventId} />
+        )}
+
+        {/* My Entries Section (OPEN phase) */}
+        {event.status === "OPEN" && (
+          <div className="wine-card space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-wine text-lg text-[#F0E3C7]">
                 {typeInfo.emoji} My Entries
-                <Badge variant="secondary" className="text-xs">
+                <span className="ml-2 text-sm text-[#A08060]">
                   {myEntries.length}/{event.entriesPerPerson}
-                </Badge>
-              </span>
+                </span>
+              </h3>
               {entriesRemaining > 0 && (
-                <Button size="sm" onClick={() => setEntryFormOpen(true)} className="gap-1">
+                <button onClick={() => setEntryFormOpen(true)} className="wine-btn wine-btn-sm !w-auto text-sm">
                   <Plus className="h-3 w-3" />
                   Add
-                </Button>
+                </button>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
             {myEntries.length > 0 ? (
               <div className="space-y-3">
                 {myEntries.map((entry) => (
@@ -355,34 +333,31 @@ export default function WineEventDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-sm text-slate-500">
+              <p className="text-center text-sm text-[#A08060] py-4">
                 You haven&apos;t submitted any entries yet. Add up to {event.entriesPerPerson}!
               </p>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* All Entries (SCORING: only assigned bags, blind. REVEAL/COMPLETE: all, unmasked) */}
-      {(event.status === "SCORING" || isRevealed) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              {typeInfo.emoji} {isRevealed ? "All Entries" : "Bags"}
+        {/* All Entries (SCORING: bags, REVEAL/COMPLETE: all) */}
+        {(event.status === "SCORING" || isRevealed) && (
+          <div className="wine-card space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="font-wine text-lg text-[#F0E3C7]">
+                {typeInfo.emoji} {isRevealed ? "All Entries" : "Bags"}
+              </h3>
               {event.status === "SCORING" && (
-                <Badge variant="warning" className="ml-2 gap-1">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
                   <EyeOff className="h-3 w-3" />
                   Blind
-                </Badge>
+                </span>
               )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
             {(isRevealed ? entries : assignedEntries).length > 0 ? (
               <div className="space-y-3">
                 {(isRevealed ? entries : assignedEntries)
                   .sort((a, b) => {
-                    // Sort by place first (1st, 2nd, 3rd), then by bag number
                     if (a.finalPlace && b.finalPlace) return a.finalPlace - b.finalPlace;
                     if (a.finalPlace) return -1;
                     if (b.finalPlace) return 1;
@@ -402,25 +377,21 @@ export default function WineEventDetailPage() {
                   ))}
               </div>
             ) : (
-              <p className="text-center text-sm text-slate-500">
+              <p className="text-center text-sm text-[#A08060] py-4">
                 {event.status === "SCORING"
                   ? "No bags assigned yet. The host needs to assign bag numbers."
                   : "No entries yet."}
               </p>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* SETUP entries (admin sees all submitted entries) */}
-      {event.status === "SETUP" && entries.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+        {/* SETUP entries (admin sees all) */}
+        {event.status === "SETUP" && entries.length > 0 && (
+          <div className="wine-card space-y-4">
+            <h3 className="font-wine text-lg text-[#F0E3C7]">
               {typeInfo.emoji} Entries ({entries.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
             <div className="space-y-3">
               {entries.map((entry) => (
                 <WineEntryCard
@@ -434,120 +405,107 @@ export default function WineEventDetailPage() {
                 />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* Score Breakdown Table (REVEAL/COMPLETE) */}
-      {isRevealed && entries.length > 0 && (
-        <ScoreBreakdownTable entries={entries} />
-      )}
+        {/* Score Breakdown Table (REVEAL/COMPLETE) */}
+        {isRevealed && entries.length > 0 && (
+          <ScoreBreakdownTable entries={entries} />
+        )}
 
-      {/* Best Palate Card (REVEAL/COMPLETE) */}
-      {isRevealed && event.bestPalateMemberId && (
-        <Card className="border-purple-500/30 bg-purple-500/5">
-          <CardContent className="pt-6">
+        {/* Best Palate Card (REVEAL/COMPLETE) */}
+        {isRevealed && event.bestPalateMemberId && (
+          <div className="wine-card-gold p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/20">
-                <Trophy className="h-5 w-5 text-purple-400" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/20 text-2xl">
+                🎯
               </div>
               <div>
-                <p className="text-sm font-semibold text-purple-300">Best Palate Award</p>
-                <p className="text-xs text-slate-400">
+                <p className="font-wine text-lg font-semibold text-purple-300">Best Palate Award</p>
+                <p className="text-sm text-[#A08060]">
                   Closest to group consensus (distance: {event.bestPalateScore?.toFixed(1) ?? "?"})
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* Bets */}
-      {bets.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <DollarSign className="h-5 w-5 text-green-400" />
+        {/* Bets */}
+        {bets.length > 0 && (
+          <div className="wine-card space-y-4">
+            <h3 className="font-wine text-lg text-[#F0E3C7] flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-emerald-400" />
               Bets ({bets.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
             <div className="space-y-3">
               {bets.map((bet) => (
                 <WineBetCard key={bet.id} bet={bet} />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* Scores (REVEAL/COMPLETE) */}
-      {scores.length > 0 && isRevealed && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Star className="h-5 w-5 text-amber-400" />
+        {/* Scores (REVEAL/COMPLETE) */}
+        {scores.length > 0 && isRevealed && (
+          <div className="wine-card space-y-4">
+            <h3 className="font-wine text-lg text-[#F0E3C7] flex items-center gap-2">
+              <Star className="h-5 w-5 text-[#C9A040]" />
               Scores ({scores.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
             <div className="space-y-2">
               {scores.map((score) => {
                 const scorerName = score.member?.user?.name || score.member?.guestName || "Guest";
                 return (
                   <div
                     key={score.id}
-                    className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 p-3"
+                    className="flex items-center gap-3 rounded-xl bg-[#160407] p-3"
                   >
                     <UserAvatar name={scorerName} src={score.member?.user?.avatarUrl} size="sm" />
-                    <span className="text-sm text-slate-200">{scorerName}</span>
+                    <span className="text-sm text-[#F0E3C7]">{scorerName}</span>
                     {score.submittedAt && (
-                      <Badge variant="success" className="ml-auto">Submitted</Badge>
+                      <span className="ml-auto px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        Submitted
+                      </span>
                     )}
                   </div>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {/* Reveal Sequence (plays once when host triggers reveal) */}
-      {confettiOpen && revealResults && (
-        <RevealSequence
-          results={revealResults}
-          contestType={event.contestType}
-          onComplete={() => setConfettiOpen(false)}
-        />
-      )}
+        {/* Reveal Sequence */}
+        {confettiOpen && revealResults && (
+          <RevealSequence
+            results={revealResults}
+            contestType={event.contestType}
+            onComplete={() => setConfettiOpen(false)}
+          />
+        )}
 
-      {/* Phase Transition Button (admin only) */}
-      {isOrganizer && nextStatus && (
-        <Button
-          onClick={() => handleStatusAdvance(nextStatus)}
-          isLoading={updateEvent.isPending || revealWinners.isPending}
-          className="w-full gap-2"
-          variant={nextStatus === "REVEAL" ? "amber" : "default"}
-          disabled={
-            (nextStatus === "SCORING" && entries.length < 2) ||
-            (nextStatus === "REVEAL" && assignedEntries.length < 2)
-          }
-        >
-          {nextStatus === "REVEAL" ? (
-            <Trophy className="h-4 w-4" />
-          ) : nextStatus === "COMPLETE" ? (
-            <Eye className="h-4 w-4" />
-          ) : (
-            <ArrowRight className="h-4 w-4" />
-          )}
-          {NEXT_STATUS_LABELS[nextStatus]}
-          {nextStatus === "SCORING" && entries.length < 2 && (
-            <span className="text-xs opacity-75">(need 2+ entries)</span>
-          )}
-        </Button>
-      )}
+        {/* Phase Transition Button (admin only) */}
+        {isOrganizer && nextStatus && (
+          <button
+            onClick={() => handleStatusAdvance(nextStatus)}
+            disabled={
+              updateEvent.isPending || revealWinners.isPending ||
+              (nextStatus === "SCORING" && entries.length < 2) ||
+              (nextStatus === "REVEAL" && assignedEntries.length < 2)
+            }
+            className={nextStatus === "REVEAL" ? "wine-btn" : "wine-btn-ghost w-full"}
+          >
+            {nextStatus === "REVEAL" ? <Trophy className="h-4 w-4" /> :
+             nextStatus === "COMPLETE" ? <Eye className="h-4 w-4" /> :
+             <ArrowRight className="h-4 w-4" />}
+            {NEXT_STATUS_LABELS[nextStatus]}
+            {nextStatus === "SCORING" && entries.length < 2 && (
+              <span className="text-xs opacity-75">(need 2+ entries)</span>
+            )}
+          </button>
+        )}
+      </div>
 
-      {/* Edit Event Modal */}
+      {/* Modals */}
       <WineEventFormModal
         open={eventFormOpen}
         onOpenChange={handleEventFormClose}
@@ -555,7 +513,6 @@ export default function WineEventDetailPage() {
         event={event}
       />
 
-      {/* Add/Edit Entry Modal */}
       <WineEntryFormModal
         open={entryFormOpen}
         onOpenChange={handleEntryFormClose}
@@ -571,7 +528,7 @@ export default function WineEventDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-400" />
+              <Trophy className="h-5 w-5 text-[#C9A040]" />
               Place Your Bet
             </DialogTitle>
             <DialogDescription>

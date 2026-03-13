@@ -24,10 +24,10 @@ export function ContestStepper({ currentStatus }: ContestStepperProps) {
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors ${
                   isComplete
-                    ? "border-teal-500 bg-teal-500/20 text-teal-400"
+                    ? "border-[#C9A040] bg-[#C9A040]/20 text-[#C9A040]"
                     : isCurrent
-                    ? "border-amber-500 bg-amber-500/20 text-amber-400"
-                    : "border-slate-600 bg-slate-800 text-slate-500"
+                    ? "border-[#C9A040] bg-[#C9A040]/10 text-[#C9A040] ring-2 ring-[#C9A040]/20"
+                    : "border-[#A08060]/30 bg-[#2A0A0E] text-[#A08060]/60"
                 }`}
               >
                 {isComplete ? <Check className="h-4 w-4" /> : i + 1}
@@ -35,10 +35,10 @@ export function ContestStepper({ currentStatus }: ContestStepperProps) {
               <span
                 className={`text-[10px] sm:text-xs font-medium text-center leading-tight ${
                   isComplete
-                    ? "text-teal-400"
+                    ? "text-[#C9A040]"
                     : isCurrent
-                    ? "text-amber-400"
-                    : "text-slate-500"
+                    ? "text-[#C9A040]"
+                    : "text-[#A08060]/60"
                 }`}
               >
                 {step.label}
@@ -47,7 +47,7 @@ export function ContestStepper({ currentStatus }: ContestStepperProps) {
             {i < STATUS_ORDER.length - 1 && (
               <div
                 className={`h-0.5 flex-1 mx-1 ${
-                  i < currentIndex ? "bg-teal-500/50" : "bg-slate-700"
+                  i < currentIndex ? "bg-[#C9A040]/50" : "bg-[#A08060]/20"
                 }`}
               />
             )}
