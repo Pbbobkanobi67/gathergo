@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/clerk";
+import { getCurrentUser, isUserTripOrganizer } from "@/lib/clerk";
 import prisma from "@/lib/prisma";
 
 interface RouteParams {
@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const existing = await prisma.wineEntry.findUnique({
       where: { id: entryId },
-      include: { wineEvent: { select: { tripId: true } } },
+      include: { wineEvent: { select: { tripId: true, status: true } } },
     });
 
     if (!existing || existing.wineEventId !== eventId || existing.wineEvent.tripId !== tripId) {
@@ -37,6 +37,27 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { success: false, error: { code: "NOT_FOUND", message: "Wine entry not found" } },
         { status: 404 }
       );
+    }
+
+    // Authorization: submitter can edit during OPEN, organizer can edit anytime
+    const isOrganizer = await isUserTripOrganizer(user.id, tripId);
+    if (!isOrganizer) {
+      const member = await prisma.tripMember.findFirst({
+        where: { tripId, userId: user.id },
+        select: { id: true },
+      });
+      if (!member || existing.submittedByMemberId !== member.id) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "You can only edit your own entries" } },
+          { status: 403 }
+        );
+      }
+      if (existing.wineEvent.status !== "OPEN") {
+        return NextResponse.json(
+          { success: false, error: { code: "BAD_REQUEST", message: "Entries can only be edited during the OPEN phase" } },
+          { status: 400 }
+        );
+      }
     }
 
     const body = await request.json();

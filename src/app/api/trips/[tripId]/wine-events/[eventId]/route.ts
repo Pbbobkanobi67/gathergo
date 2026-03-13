@@ -143,6 +143,39 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
 
+    // Auto-assign bag numbers when transitioning to SCORING
+    if (body.status === "SCORING" && existing.status === "OPEN") {
+      const unassigned = await prisma.wineEntry.findMany({
+        where: { wineEventId: eventId, bagNumber: null },
+        select: { id: true },
+      });
+      if (unassigned.length > 0) {
+        // Shuffle entries randomly
+        const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
+        // Find max existing bag number
+        const maxBag = await prisma.wineEntry.aggregate({
+          where: { wineEventId: eventId, bagNumber: { not: null } },
+          _max: { bagNumber: true },
+        });
+        const startNum = (maxBag._max.bagNumber ?? 0) + 1;
+        // Assign bags + update status in one transaction
+        await prisma.$transaction([
+          ...shuffled.map((entry, i) =>
+            prisma.wineEntry.update({
+              where: { id: entry.id },
+              data: { bagNumber: startNum + i },
+            })
+          ),
+          prisma.wineEvent.update({
+            where: { id: eventId },
+            data: { status: "SCORING" },
+          }),
+        ]);
+        // Remove status from body since we already updated it
+        delete body.status;
+      }
+    }
+
     const wineEvent = await prisma.wineEvent.update({
       where: { id: eventId },
       data: body,

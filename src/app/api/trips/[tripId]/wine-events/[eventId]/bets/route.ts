@@ -46,15 +46,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { predictedFirst, predictedSecond, predictedThird, betAmountHoodBucks, betAmountCash } =
       validationResult.data;
 
-    // Check sufficient Hood Bucks
-    if (betAmountHoodBucks > member.hoodBucksBalance) {
+    // Check for existing bet to calculate the delta
+    const existingBet = await prisma.wineBet.findUnique({
+      where: { wineEventId_memberId: { wineEventId: eventId, memberId: member.id } },
+      select: { betAmountHoodBucks: true },
+    });
+
+    const previousAmount = existingBet?.betAmountHoodBucks ?? 0;
+    const delta = betAmountHoodBucks - previousAmount;
+
+    // Only check balance if we need to deduct more
+    if (delta > 0 && delta > member.hoodBucksBalance) {
       return NextResponse.json(
         { success: false, error: { code: "VALIDATION_ERROR", message: "Insufficient Hood Bucks" } },
         { status: 400 }
       );
     }
 
-    // Create bet and deduct Hood Bucks atomically
+    // Create/update bet and adjust Hood Bucks atomically
     const [bet] = await prisma.$transaction([
       prisma.wineBet.upsert({
         where: { wineEventId_memberId: { wineEventId: eventId, memberId: member.id } },
@@ -81,20 +90,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           },
         },
       }),
-      ...(betAmountHoodBucks > 0
+      ...(delta !== 0
         ? [
             prisma.tripMember.update({
               where: { id: member.id },
-              data: { hoodBucksBalance: { decrement: betAmountHoodBucks } },
+              data: { hoodBucksBalance: { decrement: delta } },
             }),
             prisma.hoodBucksTransaction.create({
               data: {
                 memberId: member.id,
                 userId: user.id,
                 tripId,
-                amount: -betAmountHoodBucks,
+                amount: -delta,
                 type: "BET_PLACED",
-                description: `Bet on wine event`,
+                description: delta > 0 ? `Bet on wine event` : `Bet adjustment refund`,
               },
             }),
           ]
@@ -105,7 +114,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       tripId,
       userId: user.id,
       type: "WINE_BET_PLACED",
-      action: `placed a wine bet`,
+      action: existingBet ? `updated a wine bet` : `placed a wine bet`,
       entityType: "wineBet",
       entityId: bet.id,
     });

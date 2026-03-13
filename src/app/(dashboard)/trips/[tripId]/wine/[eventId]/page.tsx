@@ -29,7 +29,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useWineEvent, useUpdateWineEvent } from "@/hooks/useWineEvents";
-import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners, useLiveLeaderboard, useAssignBags } from "@/hooks/useWineEventDetail";
+import { usePlaceWineBet, useDeleteWineEntry, useRevealWinners, useLiveLeaderboard } from "@/hooks/useWineEventDetail";
 import { useMembers } from "@/hooks/useMembers";
 import { useSafeUser } from "@/components/shared/SafeClerkUser";
 import { HOOD_BUCKS, WINE_EVENT_STATUSES, CONTEST_TYPES } from "@/constants";
@@ -60,7 +60,6 @@ export default function WineEventDetailPage() {
   const deleteEntry = useDeleteWineEntry();
   const updateEvent = useUpdateWineEvent();
   const revealWinners = useRevealWinners();
-  const assignBagsMutation = useAssignBags();
   const { data: leaderboardData } = useLiveLeaderboard(tripId, eventId, event?.status === "SCORING");
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
@@ -157,25 +156,7 @@ export default function WineEventDetailPage() {
   const handleStatusAdvance = async (nextStatus: string) => {
     setAdvanceError(null);
     try {
-      if (nextStatus === "SCORING") {
-        // Advance to SCORING first (API requires SCORING status for bag assignment)
-        await updateEvent.mutateAsync({
-          tripId,
-          eventId,
-          data: { status: nextStatus },
-        });
-        // Then auto-assign bag numbers to all unassigned entries (randomized order)
-        const unassigned = entries.filter((e) => e.bagNumber === null);
-        if (unassigned.length > 0) {
-          const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
-          const existingMax = Math.max(0, ...entries.filter((e) => e.bagNumber !== null).map((e) => e.bagNumber!));
-          const assignments = shuffled.map((e, i) => ({
-            entryId: e.id,
-            bagNumber: existingMax + i + 1,
-          }));
-          await assignBagsMutation.mutateAsync({ tripId, eventId, assignments });
-        }
-      } else if (nextStatus === "REVEAL") {
+      if (nextStatus === "REVEAL") {
         const results = await revealWinners.mutateAsync({ tripId, eventId });
         setRevealResults(results);
         setConfettiOpen(true);
@@ -514,7 +495,7 @@ export default function WineEventDetailPage() {
             <button
               onClick={() => handleStatusAdvance(nextStatus)}
               disabled={
-                updateEvent.isPending || revealWinners.isPending || assignBagsMutation.isPending ||
+                updateEvent.isPending || revealWinners.isPending ||
                 (nextStatus === "SCORING" && entries.length < 2) ||
                 (nextStatus === "REVEAL" && submittedScoreCount < 1)
               }
