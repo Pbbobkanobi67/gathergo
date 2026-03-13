@@ -34,6 +34,7 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
   const [activeIndex, setActiveIndex] = useState(0);
   const [tasteNotes, setTasteNotes] = useState<Record<string, EntryRating>>({});
   const [grapeDropdownOpen, setGrapeDropdownOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     const initial: Record<string, EntryRating> = {};
@@ -78,10 +79,13 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
 
   const handleSubmit = async () => {
     if (!allScored) return;
+    setSubmitError(null);
     try {
       await submitScore.mutateAsync({ tripId, eventId, tasteNotes });
       onComplete?.();
-    } catch {}
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit scores");
+    }
   };
 
   const filteredVarietals = activeNotes?.grapeGuess
@@ -258,6 +262,13 @@ export function WineScoringPanel({ tripId, eventId, entries, existingNotes, onCo
               className="w-full rounded-lg border border-[#C9A040]/20 bg-[#160407] px-3 py-2 text-sm text-[#F0E3C7] placeholder:text-[#A08060]/50 focus:border-[#C9A040]/50 focus:outline-none focus:ring-1 focus:ring-[#C9A040]/30"
             />
           </div>
+
+          {/* Error display */}
+          {submitError && (
+            <p className="text-center text-xs text-red-400 bg-red-400/10 rounded-lg p-2">
+              {submitError}
+            </p>
+          )}
 
           {/* Prev/Next navigation */}
           <div className="flex items-center justify-between pt-2">
