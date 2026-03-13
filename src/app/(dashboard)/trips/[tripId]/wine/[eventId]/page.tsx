@@ -502,8 +502,8 @@ export default function WineEventDetailPage() {
           />
         )}
 
-        {/* Phase Transition Button (admin only) */}
-        {isOrganizer && nextStatus && (
+        {/* Phase Transition Button */}
+        {nextStatus && (
           <div className="space-y-2">
             <button
               onClick={() => handleStatusAdvance(nextStatus)}
