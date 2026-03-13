@@ -69,6 +69,7 @@ export default function WineEventDetailPage() {
   const [confettiOpen, setConfettiOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [revealResults, setRevealResults] = useState<any>(null);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
 
   const [betOpen, setBetOpen] = useState(false);
   const [newBet, setNewBet] = useState({
@@ -154,36 +155,40 @@ export default function WineEventDetailPage() {
   };
 
   const handleStatusAdvance = async (nextStatus: string) => {
-    if (nextStatus === "SCORING") {
-      // Advance to SCORING first (API requires SCORING status for bag assignment)
-      await updateEvent.mutateAsync({
-        tripId,
-        eventId,
-        data: { status: nextStatus },
-      });
-      // Then auto-assign bag numbers to all unassigned entries (randomized order)
-      const unassigned = entries.filter((e) => e.bagNumber === null);
-      if (unassigned.length > 0) {
-        const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
-        const existingMax = Math.max(0, ...entries.filter((e) => e.bagNumber !== null).map((e) => e.bagNumber!));
-        const assignments = shuffled.map((e, i) => ({
-          entryId: e.id,
-          bagNumber: existingMax + i + 1,
-        }));
-        await assignBagsMutation.mutateAsync({ tripId, eventId, assignments });
-      }
-    } else if (nextStatus === "REVEAL") {
-      try {
+    setAdvanceError(null);
+    try {
+      if (nextStatus === "SCORING") {
+        // Advance to SCORING first (API requires SCORING status for bag assignment)
+        await updateEvent.mutateAsync({
+          tripId,
+          eventId,
+          data: { status: nextStatus },
+        });
+        // Then auto-assign bag numbers to all unassigned entries (randomized order)
+        const unassigned = entries.filter((e) => e.bagNumber === null);
+        if (unassigned.length > 0) {
+          const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
+          const existingMax = Math.max(0, ...entries.filter((e) => e.bagNumber !== null).map((e) => e.bagNumber!));
+          const assignments = shuffled.map((e, i) => ({
+            entryId: e.id,
+            bagNumber: existingMax + i + 1,
+          }));
+          await assignBagsMutation.mutateAsync({ tripId, eventId, assignments });
+        }
+      } else if (nextStatus === "REVEAL") {
         const results = await revealWinners.mutateAsync({ tripId, eventId });
         setRevealResults(results);
         setConfettiOpen(true);
-      } catch {}
-    } else {
-      await updateEvent.mutateAsync({
-        tripId,
-        eventId,
-        data: { status: nextStatus },
-      });
+      } else {
+        await updateEvent.mutateAsync({
+          tripId,
+          eventId,
+          data: { status: nextStatus },
+        });
+      }
+    } catch (err) {
+      console.error("Status advance failed:", err);
+      setAdvanceError(err instanceof Error ? err.message : "Failed to advance status");
     }
   };
 
@@ -526,6 +531,11 @@ export default function WineEventDetailPage() {
             {nextStatus === "REVEAL" && submittedScoreCount < 1 && (
               <p className="text-center text-xs text-amber-400/80">
                 At least 1 person must score before revealing
+              </p>
+            )}
+            {advanceError && (
+              <p className="text-center text-xs text-red-400 bg-red-400/10 rounded-lg p-2">
+                {advanceError}
               </p>
             )}
           </div>
