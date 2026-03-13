@@ -155,7 +155,13 @@ export default function WineEventDetailPage() {
 
   const handleStatusAdvance = async (nextStatus: string) => {
     if (nextStatus === "SCORING") {
-      // Auto-assign bag numbers to all unassigned entries (randomized order)
+      // Advance to SCORING first (API requires SCORING status for bag assignment)
+      await updateEvent.mutateAsync({
+        tripId,
+        eventId,
+        data: { status: nextStatus },
+      });
+      // Then auto-assign bag numbers to all unassigned entries (randomized order)
       const unassigned = entries.filter((e) => e.bagNumber === null);
       if (unassigned.length > 0) {
         const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
@@ -166,11 +172,6 @@ export default function WineEventDetailPage() {
         }));
         await assignBagsMutation.mutateAsync({ tripId, eventId, assignments });
       }
-      await updateEvent.mutateAsync({
-        tripId,
-        eventId,
-        data: { status: nextStatus },
-      });
     } else if (nextStatus === "REVEAL") {
       try {
         const results = await revealWinners.mutateAsync({ tripId, eventId });
