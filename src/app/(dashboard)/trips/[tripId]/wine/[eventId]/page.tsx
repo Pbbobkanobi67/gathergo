@@ -109,6 +109,7 @@ export default function WineEventDetailPage() {
   const assignedEntries = entries.filter((e) => e.bagNumber !== null);
   const unassignedEntries = entries.filter((e) => e.bagNumber === null);
   const needsBagAssignment = event.status === "SCORING" && unassignedEntries.length > 0 && isOrganizer;
+  const submittedScoreCount = scores.filter((s) => s.submittedAt).length;
 
   const handlePlaceBet = async () => {
     if (!newBet.predictedFirst || !newBet.predictedSecond || !newBet.predictedThird) return;
@@ -502,36 +503,32 @@ export default function WineEventDetailPage() {
         )}
 
         {/* Phase Transition Button (admin only) */}
-        {isOrganizer && nextStatus && (() => {
-          const submittedScores = scores.filter((s) => s.submittedAt);
-          const noScoresForReveal = nextStatus === "REVEAL" && submittedScores.length < 1;
-          return (
-            <div className="space-y-2">
-              <button
-                onClick={() => handleStatusAdvance(nextStatus)}
-                disabled={
-                  updateEvent.isPending || revealWinners.isPending || assignBagsMutation.isPending ||
-                  (nextStatus === "SCORING" && entries.length < 2) ||
-                  noScoresForReveal
-                }
-                className={nextStatus === "REVEAL" ? "wine-btn" : "wine-btn-ghost w-full"}
-              >
-                {nextStatus === "REVEAL" ? <Trophy className="h-4 w-4" /> :
-                 nextStatus === "COMPLETE" ? <Eye className="h-4 w-4" /> :
-                 <ArrowRight className="h-4 w-4" />}
-                {NEXT_STATUS_LABELS[nextStatus]}
-                {nextStatus === "SCORING" && entries.length < 2 && (
-                  <span className="text-xs opacity-75">(need 2+ entries)</span>
-                )}
-              </button>
-              {noScoresForReveal && (
-                <p className="text-center text-xs text-amber-400/80">
-                  At least 1 person must score before revealing
-                </p>
+        {isOrganizer && nextStatus && (
+          <div className="space-y-2">
+            <button
+              onClick={() => handleStatusAdvance(nextStatus)}
+              disabled={
+                updateEvent.isPending || revealWinners.isPending || assignBagsMutation.isPending ||
+                (nextStatus === "SCORING" && entries.length < 2) ||
+                (nextStatus === "REVEAL" && submittedScoreCount < 1)
+              }
+              className={nextStatus === "REVEAL" ? "wine-btn" : "wine-btn-ghost w-full"}
+            >
+              {nextStatus === "REVEAL" ? <Trophy className="h-4 w-4" /> :
+               nextStatus === "COMPLETE" ? <Eye className="h-4 w-4" /> :
+               <ArrowRight className="h-4 w-4" />}
+              {NEXT_STATUS_LABELS[nextStatus]}
+              {nextStatus === "SCORING" && entries.length < 2 && (
+                <span className="text-xs opacity-75">(need 2+ entries)</span>
               )}
-            </div>
-          );
-        })()}
+            </button>
+            {nextStatus === "REVEAL" && submittedScoreCount < 1 && (
+              <p className="text-center text-xs text-amber-400/80">
+                At least 1 person must score before revealing
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modals */}
